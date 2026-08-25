@@ -1,0 +1,70 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Print Flutter version
+        run: flutter --version
+
+      - name: Backup Custom Files
+        run: |
+          mkdir -p backup_custom
+          # Backup our custom AndroidManifest.xml if it exists
+          if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
+            mkdir -p backup_custom/android
+            cp android/app/src/main/AndroidManifest.xml backup_custom/android/
+          fi
+          # Backup our custom main.dart
+          cp lib/main.dart backup_custom/
+
+      - name: Initialize missing Flutter Android project files
+        run: flutter create --platforms=android .
+
+      - name: Restore Custom Files
+        run: |
+          # Restore the custom AndroidManifest.xml containing our permissions
+          if [ -f "backup_custom/android/AndroidManifest.xml" ]; then
+            cp backup_custom/android/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          fi
+          # Restore main.dart so flutter create doesn't overwrite it with the counter app
+          cp backup_custom/main.dart lib/main.dart
+          rm -rf backup_custom
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Generate Database Code (Drift)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: Medication-Reminder-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
