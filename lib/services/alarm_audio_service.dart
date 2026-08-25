@@ -11,7 +11,7 @@ class AlarmAudioService {
   Future<void> initialize() async {
     try {
       await AudioPlayer.global.setAudioContext(
-        const AudioContext(
+        AudioContext(
           android: AudioContextAndroid(
             isSpeakerphoneOn: true,
             stayAwake: true,
