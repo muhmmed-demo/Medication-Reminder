@@ -54,6 +54,11 @@ jobs:
           cp backup_custom/main.dart lib/main.dart
           rm -rf backup_custom
 
+      - name: Enable Core Library Desugaring
+        run: |
+          sed -i 's/compileOptions {/compileOptions {\n        isCoreLibraryDesugaringEnabled = true/g' android/app/build.gradle.kts
+          echo 'dependencies { coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4") }' >> android/app/build.gradle.kts
+
       - name: Install Dependencies
         run: flutter pub get
 
