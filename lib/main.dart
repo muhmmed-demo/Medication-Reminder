@@ -35,8 +35,7 @@ void main() async {
     },
   );
 
-  // 4. Request required permissions (Exact alarm, notification, overlay)
-  await permissionService.requestAllAlarmPermissions();
+  // Permissions will be requested in the home screen after UI loads
 
   // 5. Ensure all active medication alarms are scheduled with AlarmManager
   await alarmSchedulerService.scheduleAllActiveAlarms();

@@ -5,6 +5,9 @@ import 'bloc/medications_bloc.dart';
 import 'bloc/medications_event.dart';
 import 'bloc/medications_state.dart';
 
+import '../../../core/di/injection_container.dart';
+import '../../../services/permission_service.dart';
+
 class MedicationsScreen extends StatefulWidget {
   const MedicationsScreen({super.key});
 
@@ -17,6 +20,11 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
   void initState() {
     super.initState();
     context.read<MedicationsBloc>().add(LoadMedicationsEvent());
+    
+    // Request permissions when the app starts
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      sl<PermissionService>().requestAllAlarmPermissions();
+    });
   }
 
   @override

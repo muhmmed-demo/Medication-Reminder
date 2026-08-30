@@ -51,7 +51,6 @@ class NotificationService {
       description: NotificationConstants.alarmChannelDescription,
       importance: Importance.max,
       playSound: true,
-      sound: RawResourceAndroidNotificationSound(AppConstants.customAlarmSoundAndroidRaw),
       enableVibration: true,
       audioAttributesUsage: AudioAttributesUsage.alarm,
     );
@@ -104,24 +103,7 @@ class NotificationService {
       ongoing: true,
       autoCancel: false,
       playSound: true,
-      sound: useCustomSound
-          ? const RawResourceAndroidNotificationSound(AppConstants.customAlarmSoundAndroidRaw)
-          : null,
       enableVibration: true,
-      actions: <AndroidNotificationAction>[
-        const AndroidNotificationAction(
-          'action_take',
-          'تم أخذ الجرعة ✅',
-          showsUserInterface: true,
-          cancelNotification: true,
-        ),
-        const AndroidNotificationAction(
-          'action_snooze',
-          'تأجيل 10 دقائق ⏰',
-          showsUserInterface: true,
-          cancelNotification: true,
-        ),
-      ],
     );
 
     final NotificationDetails notificationDetails =
@@ -137,7 +119,15 @@ class NotificationService {
       'useCustomSound': useCustomSound,
     };
 
-    final tzDateTime = tz.TZDateTime.from(scheduledDateTime, tz.local);
+    final utcTime = scheduledDateTime.toUtc();
+    final tzDateTime = tz.TZDateTime.utc(
+      utcTime.year,
+      utcTime.month,
+      utcTime.day,
+      utcTime.hour,
+      utcTime.minute,
+      utcTime.second,
+    );
 
     await _notificationsPlugin.zonedSchedule(
       id,
