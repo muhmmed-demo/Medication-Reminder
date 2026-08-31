@@ -41,7 +41,11 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetMedicationsUseCase(sl<MedicationRepository>()));
   sl.registerLazySingleton(() => DeleteMedicationUseCase(sl<MedicationRepository>()));
   sl.registerLazySingleton(() => ScheduleDoseUseCase(sl<MedicationRepository>()));
-  sl.registerLazySingleton(() => MarkDoseTakenUseCase(sl<DoseLogRepository>()));
+  sl.registerLazySingleton(() => MarkDoseTakenUseCase(
+    repository: sl<DoseLogRepository>(),
+    medicationRepository: sl<MedicationRepository>(),
+    notificationService: sl<NotificationService>(),
+  ));
   sl.registerLazySingleton(() => SnoozeDoseUseCase(sl<DoseLogRepository>()));
   sl.registerLazySingleton(() => GetDoseLogsUseCase(sl<DoseLogRepository>()));
 

@@ -148,6 +148,30 @@ class NotificationService {
     );
   }
 
+  Future<void> showWarningNotification({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      NotificationConstants.systemSoundChannelId,
+      NotificationConstants.systemSoundChannelName,
+      channelDescription: NotificationConstants.systemSoundChannelDescription,
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+    );
+    const NotificationDetails notificationDetails =
+        NotificationDetails(android: androidDetails);
+
+    await _notificationsPlugin.show(
+      id,
+      title,
+      body,
+      notificationDetails,
+    );
+  }
+
   Future<void> cancelAlarm(int id) async {
     await _notificationsPlugin.cancel(id);
   }

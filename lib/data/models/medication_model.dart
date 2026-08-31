@@ -14,6 +14,13 @@ class MedicationModel {
       notes: data.notes,
       isActive: data.isActive,
       createdAt: data.createdAt,
+      inventoryCount: data.inventoryCount,
+      refillThreshold: data.refillThreshold,
+      isPRN: data.isPRN,
+      minHoursBetweenDoses: data.minHoursBetweenDoses,
+      mealTiming: data.mealTiming,
+      imagePath: data.imagePath,
+      customSoundPath: data.customSoundPath,
     );
   }
 
@@ -28,6 +35,13 @@ class MedicationModel {
       notes: Value(entity.notes),
       isActive: Value(entity.isActive),
       createdAt: Value(entity.createdAt),
+      inventoryCount: Value(entity.inventoryCount),
+      refillThreshold: Value(entity.refillThreshold),
+      isPRN: Value(entity.isPRN),
+      minHoursBetweenDoses: Value(entity.minHoursBetweenDoses),
+      mealTiming: Value(entity.mealTiming),
+      imagePath: Value(entity.imagePath),
+      customSoundPath: Value(entity.customSoundPath),
     );
   }
 }

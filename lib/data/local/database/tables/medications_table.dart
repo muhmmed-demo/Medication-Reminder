@@ -11,4 +11,13 @@ class MedicationsTable extends Table {
   TextColumn get notes => text().nullable()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  
+  // Phase 1: Advanced Features
+  IntColumn get inventoryCount => integer().nullable()();
+  IntColumn get refillThreshold => integer().nullable()();
+  BoolColumn get isPRN => boolean().withDefault(const Constant(false))();
+  IntColumn get minHoursBetweenDoses => integer().nullable()();
+  TextColumn get mealTiming => text().nullable()(); // 'before', 'after', 'with', 'none'
+  TextColumn get imagePath => text().nullable()();
+  TextColumn get customSoundPath => text().nullable()();
 }

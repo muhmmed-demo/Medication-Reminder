@@ -10,6 +10,15 @@ class Medication extends Equatable {
   final String? notes;
   final bool isActive;
   final DateTime createdAt;
+  
+  // Phase 1: Advanced Features
+  final int? inventoryCount;
+  final int? refillThreshold;
+  final bool isPRN;
+  final int? minHoursBetweenDoses;
+  final String? mealTiming;
+  final String? imagePath;
+  final String? customSoundPath;
 
   const Medication({
     this.id,
@@ -21,6 +30,13 @@ class Medication extends Equatable {
     this.notes,
     this.isActive = true,
     required this.createdAt,
+    this.inventoryCount,
+    this.refillThreshold,
+    this.isPRN = false,
+    this.minHoursBetweenDoses,
+    this.mealTiming,
+    this.imagePath,
+    this.customSoundPath,
   });
 
   bool get isContinuous => endDate == null;
@@ -35,6 +51,13 @@ class Medication extends Equatable {
     String? notes,
     bool? isActive,
     DateTime? createdAt,
+    int? inventoryCount,
+    int? refillThreshold,
+    bool? isPRN,
+    int? minHoursBetweenDoses,
+    String? mealTiming,
+    String? imagePath,
+    String? customSoundPath,
   }) {
     return Medication(
       id: id ?? this.id,
@@ -46,6 +69,13 @@ class Medication extends Equatable {
       notes: notes ?? this.notes,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
+      inventoryCount: inventoryCount ?? this.inventoryCount,
+      refillThreshold: refillThreshold ?? this.refillThreshold,
+      isPRN: isPRN ?? this.isPRN,
+      minHoursBetweenDoses: minHoursBetweenDoses ?? this.minHoursBetweenDoses,
+      mealTiming: mealTiming ?? this.mealTiming,
+      imagePath: imagePath ?? this.imagePath,
+      customSoundPath: customSoundPath ?? this.customSoundPath,
     );
   }
 
@@ -60,5 +90,12 @@ class Medication extends Equatable {
         notes,
         isActive,
         createdAt,
+        inventoryCount,
+        refillThreshold,
+        isPRN,
+        minHoursBetweenDoses,
+        mealTiming,
+        imagePath,
+        customSoundPath,
       ];
 }

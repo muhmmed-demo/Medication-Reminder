@@ -9,4 +9,8 @@ class DoseSchedulesTable extends Table {
   TextColumn get repeatType => text().withDefault(const Constant('daily'))(); // 'daily', 'specificDays', 'custom'
   TextColumn get repeatDays => text().nullable()(); // JSON string like "[1,2,3,4,5,6,7]"
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  
+  // Phase 1: Cycle-based medications
+  IntColumn get cycleOnDays => integer().nullable()();
+  IntColumn get cycleOffDays => integer().nullable()();
 }

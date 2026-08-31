@@ -8,6 +8,10 @@ class DoseSchedule extends Equatable {
   final RepeatType repeatType;
   final List<int>? repeatDays; // e.g. [1, 2, 3, 4, 5, 6, 7] (Monday=1, Sunday=7)
   final bool isActive;
+  
+  // Phase 1: Cycle-based medications
+  final int? cycleOnDays;
+  final int? cycleOffDays;
 
   const DoseSchedule({
     this.id,
@@ -16,6 +20,8 @@ class DoseSchedule extends Equatable {
     this.repeatType = RepeatType.daily,
     this.repeatDays,
     this.isActive = true,
+    this.cycleOnDays,
+    this.cycleOffDays,
   });
 
   int get hour {
@@ -35,6 +41,8 @@ class DoseSchedule extends Equatable {
     RepeatType? repeatType,
     List<int>? repeatDays,
     bool? isActive,
+    int? cycleOnDays,
+    int? cycleOffDays,
   }) {
     return DoseSchedule(
       id: id ?? this.id,
@@ -43,6 +51,8 @@ class DoseSchedule extends Equatable {
       repeatType: repeatType ?? this.repeatType,
       repeatDays: repeatDays ?? this.repeatDays,
       isActive: isActive ?? this.isActive,
+      cycleOnDays: cycleOnDays ?? this.cycleOnDays,
+      cycleOffDays: cycleOffDays ?? this.cycleOffDays,
     );
   }
 
@@ -54,5 +64,7 @@ class DoseSchedule extends Equatable {
         repeatType,
         repeatDays,
         isActive,
+        cycleOnDays,
+        cycleOffDays,
       ];
 }

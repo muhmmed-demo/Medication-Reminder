@@ -37,6 +37,8 @@ class DoseScheduleModel {
       repeatType: parsedRepeatType,
       repeatDays: parsedDays,
       isActive: data.isActive,
+      cycleOnDays: data.cycleOnDays,
+      cycleOffDays: data.cycleOffDays,
     );
   }
 
@@ -53,6 +55,8 @@ class DoseScheduleModel {
       repeatType: Value(entity.repeatType.name),
       repeatDays: Value(encodedDays),
       isActive: Value(entity.isActive),
+      cycleOnDays: Value(entity.cycleOnDays),
+      cycleOffDays: Value(entity.cycleOffDays),
     );
   }
 }
