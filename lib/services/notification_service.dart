@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -42,6 +43,10 @@ class NotificationService {
     );
 
     await _createNotificationChannels();
+  }
+
+  Future<NotificationAppLaunchDetails?> getNotificationAppLaunchDetails() async {
+    return await _notificationsPlugin.getNotificationAppLaunchDetails();
   }
 
   Future<void> _createNotificationChannels() async {
@@ -104,6 +109,7 @@ class NotificationService {
       autoCancel: false,
       playSound: true,
       enableVibration: true,
+      additionalFlags: Int32List.fromList(<int>[4]), // FLAG_INSISTENT
     );
 
     final NotificationDetails notificationDetails =

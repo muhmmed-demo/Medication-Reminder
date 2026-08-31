@@ -31,10 +31,6 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
     StartAlarmEvent event,
     Emitter<AlarmState> emit,
   ) async {
-    // Start audio loop & continuous vibration
-    await alarmAudioService.startAlarmSound(useCustomSound: event.useCustomSound);
-    await vibrationService.startAlarmVibration();
-
     final canSnooze = event.snoozeCount < AppConstants.maxSnoozeCount;
 
     emit(AlarmRinging(
@@ -56,11 +52,7 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
     if (state is! AlarmRinging) return;
     final ringingState = state as AlarmRinging;
 
-    // Stop audio & vibration
-    await alarmAudioService.stopAlarmSound();
-    await vibrationService.stopVibration();
-
-    // Cancel notification
+    // Cancel notification which natively stops the sound/vibration
     final notifId = ringingState.doseScheduleId;
     await notificationService.cancelAlarm(notifId);
 
@@ -83,9 +75,9 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
 
     if (!ringingState.canSnooze) return;
 
-    // Stop audio & vibration
-    await alarmAudioService.stopAlarmSound();
-    await vibrationService.stopVibration();
+    // Cancel current notification to stop sound
+    final notifId = ringingState.doseScheduleId;
+    await notificationService.cancelAlarm(notifId);
 
     final nextSnoozeCount = ringingState.snoozeCount + 1;
     final nextAlarmTime = DateTime.now().add(
@@ -100,7 +92,6 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
     );
 
     // Schedule next snooze alarm
-    final notifId = ringingState.doseScheduleId;
     await notificationService.scheduleAlarm(
       id: notifId,
       medicationName: ringingState.medicationName,
@@ -118,8 +109,6 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
 
   @override
   Future<void> close() async {
-    await alarmAudioService.stopAlarmSound();
-    await vibrationService.stopVibration();
     return super.close();
   }
 }

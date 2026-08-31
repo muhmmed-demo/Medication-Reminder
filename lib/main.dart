@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'core/di/injection_container.dart';
@@ -40,5 +41,24 @@ void main() async {
   // 5. Ensure all active medication alarms are scheduled with AlarmManager
   await alarmSchedulerService.scheduleAllActiveAlarms();
 
-  runApp(const MedicationApp());
+  String initialRoute = AppRouter.home;
+  Object? initialArguments;
+
+  // 6. Check if app was launched via alarm notification
+  final launchDetails = await notificationService.getNotificationAppLaunchDetails();
+  if (launchDetails?.didNotificationLaunchApp ?? false) {
+    if (launchDetails?.notificationResponse?.payload != null) {
+      try {
+        initialRoute = AppRouter.alarm;
+        initialArguments = jsonDecode(launchDetails!.notificationResponse!.payload!);
+      } catch (e) {
+        debugPrint('Failed to parse launch payload: $e');
+      }
+    }
+  }
+
+  runApp(MedicationApp(
+    initialRoute: initialRoute,
+    initialArguments: initialArguments,
+  ));
 }

@@ -12,7 +12,14 @@ import 'presentation/screens/alarm_screen/bloc/alarm_bloc.dart';
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 class MedicationApp extends StatelessWidget {
-  const MedicationApp({super.key});
+  final String initialRoute;
+  final Object? initialArguments;
+
+  const MedicationApp({
+    super.key,
+    this.initialRoute = AppRouter.home,
+    this.initialArguments,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +56,17 @@ class MedicationApp extends StatelessWidget {
           GlobalCupertinoLocalizations.delegate,
         ],
         onGenerateRoute: AppRouter.onGenerateRoute,
-        initialRoute: AppRouter.home,
+        initialRoute: initialRoute,
+        onGenerateInitialRoutes: (String initialRouteName) {
+          return [
+            AppRouter.onGenerateRoute(
+              RouteSettings(
+                name: initialRouteName,
+                arguments: initialArguments,
+              ),
+            )!
+          ];
+        },
       ),
     );
   }
