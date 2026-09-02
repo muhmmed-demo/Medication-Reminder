@@ -10,6 +10,14 @@ class AlarmScreen extends StatelessWidget {
 
   const AlarmScreen({super.key, this.initialPayload});
 
+  void _closeScreen(BuildContext context) {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } else {
+      Navigator.of(context).pushReplacementNamed('/');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -25,7 +33,7 @@ class AlarmScreen extends StatelessWidget {
                   backgroundColor: Color(0xFF10B981),
                 ),
               );
-              Navigator.of(context).popUntil((route) => route.isFirst);
+              _closeScreen(context);
             } else if (state is AlarmSnoozedSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -35,7 +43,7 @@ class AlarmScreen extends StatelessWidget {
                   backgroundColor: const Color(0xFFF59E0B),
                 ),
               );
-              Navigator.of(context).popUntil((route) => route.isFirst);
+              _closeScreen(context);
             }
           },
           builder: (context, state) {
