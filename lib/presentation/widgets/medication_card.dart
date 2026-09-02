@@ -57,6 +57,60 @@ class MedicationCard extends StatelessWidget {
                           color: Colors.grey.shade600,
                         ),
                       ),
+                      if (medication.inventoryCount != null || medication.mealTiming != null) ...[
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            if (medication.inventoryCount != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: (medication.inventoryCount! <= 3)
+                                      ? Colors.red.withAlpha(30)
+                                      : Colors.blue.withAlpha(25),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: (medication.inventoryCount! <= 3)
+                                        ? Colors.redAccent
+                                        : Colors.blueAccent.withAlpha(100),
+                                  ),
+                                ),
+                                child: Text(
+                                  'المتبقي: ${medication.inventoryCount} حبة',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: (medication.inventoryCount! <= 3)
+                                        ? Colors.redAccent
+                                        : Colors.blueAccent,
+                                  ),
+                                ),
+                              ),
+                            if (medication.mealTiming != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withAlpha(30),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  medication.mealTiming == 'before'
+                                      ? 'قبل الأكل 🍽️'
+                                      : medication.mealTiming == 'after'
+                                          ? 'بعد الأكل 🥣'
+                                          : 'مع الأكل 🥪',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),

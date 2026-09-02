@@ -27,7 +27,31 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (Migrator m) async {
+          await m.createAll();
+        },
+        onUpgrade: (Migrator m, int from, int to) async {
+          if (from < 2) {
+            // Add columns introduced in Phase 1
+            await m.addColumn(medicationsTable, medicationsTable.inventoryCount);
+            await m.addColumn(medicationsTable, medicationsTable.refillThreshold);
+            await m.addColumn(medicationsTable, medicationsTable.isPRN);
+            await m.addColumn(medicationsTable, medicationsTable.minHoursBetweenDoses);
+            await m.addColumn(medicationsTable, medicationsTable.mealTiming);
+            await m.addColumn(medicationsTable, medicationsTable.imagePath);
+            await m.addColumn(medicationsTable, medicationsTable.customSoundPath);
+            await m.addColumn(doseSchedulesTable, doseSchedulesTable.cycleOnDays);
+            await m.addColumn(doseSchedulesTable, doseSchedulesTable.cycleOffDays);
+          }
+        },
+        beforeOpen: (details) async {
+          await customStatement('PRAGMA foreign_keys = ON');
+        },
+      );
 
   static QueryExecutor _openConnection() {
     return driftDatabase(

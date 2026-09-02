@@ -19,17 +19,25 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
   final _nameController = TextEditingController();
   final _dosageController = TextEditingController(text: 'قرص واحد');
   final _notesController = TextEditingController();
+  final _inventoryController = TextEditingController();
 
   int _timesPerDay = 1;
   bool _isContinuous = true;
   DateTime? _endDate;
   List<TimeOfDay> _scheduleTimes = [const TimeOfDay(hour: 8, minute: 0)];
+  
+  // Phase 1 advanced options
+  bool _trackInventory = false;
+  String _mealTiming = 'none'; // 'none', 'before', 'after', 'with'
+  RepeatType _repeatType = RepeatType.daily;
+  final List<int> _selectedDays = [1, 2, 3, 4, 5, 6, 7];
 
   @override
   void dispose() {
     _nameController.dispose();
     _dosageController.dispose();
     _notesController.dispose();
+    _inventoryController.dispose();
     super.dispose();
   }
 
@@ -83,7 +91,29 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
 
   void _onSave() {
     if (_formKey.currentState?.validate() ?? false) {
+      if (!_isContinuous && _endDate == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('الرجاء تحديد تاريخ انتهاء العلاج'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      if (_repeatType == RepeatType.specificDays && _selectedDays.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('الرجاء اختيار يوم واحد على الأقل في الأسبوع'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
       final now = DateTime.now();
+      final inventory = _trackInventory ? int.tryParse(_inventoryController.text.trim()) : null;
+
       final med = Medication(
         name: _nameController.text.trim(),
         dosageDescription: _dosageController.text.trim(),
@@ -92,13 +122,17 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
         endDate: _isContinuous ? null : _endDate,
         notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
         createdAt: now,
+        inventoryCount: inventory,
+        refillThreshold: inventory != null ? 3 : null,
+        mealTiming: _mealTiming == 'none' ? null : _mealTiming,
       );
 
       final schedules = _scheduleTimes.map((t) {
         return DoseSchedule(
           medicationId: 0, // Assigned by repository
           scheduledTime: _formatTimeOfDay(t),
-          repeatType: RepeatType.daily,
+          repeatType: _repeatType,
+          repeatDays: _repeatType == RepeatType.specificDays ? List.from(_selectedDays) : null,
         );
       }).toList();
 
@@ -261,6 +295,135 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
                       if (picked != null) {
                         setState(() => _endDate = picked);
                       }
+                    },
+                  ),
+                ],
+                const SizedBox(height: 24),
+                Text(
+                  'التكرار وأيام الجرعات',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Center(child: Text('يومياً')),
+                        selected: _repeatType == RepeatType.daily,
+                        selectedColor: theme.colorScheme.primary,
+                        onSelected: (val) {
+                          if (val) setState(() => _repeatType = RepeatType.daily);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Center(child: Text('أيام محددة')),
+                        selected: _repeatType == RepeatType.specificDays,
+                        selectedColor: theme.colorScheme.primary,
+                        onSelected: (val) {
+                          if (val) setState(() => _repeatType = RepeatType.specificDays);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                if (_repeatType == RepeatType.specificDays) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      {'name': 'السبت', 'day': 6},
+                      {'name': 'الأحد', 'day': 7},
+                      {'name': 'الإثنين', 'day': 1},
+                      {'name': 'الثلاثاء', 'day': 2},
+                      {'name': 'الأربعاء', 'day': 3},
+                      {'name': 'الخميس', 'day': 4},
+                      {'name': 'الجمعة', 'day': 5},
+                    ].map((d) {
+                      final dayNum = d['day'] as int;
+                      final isSelected = _selectedDays.contains(dayNum);
+                      return FilterChip(
+                        label: Text(d['name'] as String),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedDays.add(dayNum);
+                            } else {
+                              _selectedDays.remove(dayNum);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                Text(
+                  'الارتباط بالطعام',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    {'label': 'غير مرتبط', 'val': 'none'},
+                    {'label': 'قبل الأكل 🍽️', 'val': 'before'},
+                    {'label': 'بعد الأكل 🥣', 'val': 'after'},
+                    {'label': 'مع الأكل 🥪', 'val': 'with'},
+                  ].map((m) {
+                    final val = m['val'] as String;
+                    final isSel = _mealTiming == val;
+                    return ChoiceChip(
+                      label: Text(m['label'] as String),
+                      selected: isSel,
+                      onSelected: (selected) {
+                        if (selected) setState(() => _mealTiming = val);
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'إدارة المخزون والتنبيه بالنفاد',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                SwitchListTile(
+                  title: const Text('تتبع عدد الحبات المتبقية'),
+                  subtitle: const Text('سيتم خصم حبة مع كل جرعة وتنبيهك قبل النفاد'),
+                  value: _trackInventory,
+                  onChanged: (val) {
+                    setState(() => _trackInventory = val);
+                  },
+                ),
+                if (_trackInventory) ...[
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _inventoryController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'إجمالي الحبات المتوفرة حالياً *',
+                      hintText: 'مثلاً: 20 أو 30',
+                      prefixIcon: Icon(Icons.inventory_2_rounded),
+                    ),
+                    validator: (v) {
+                      if (!_trackInventory) return null;
+                      if (v == null || v.trim().isEmpty) return 'الرجاء إدخال عدد الحبات';
+                      if (int.tryParse(v.trim()) == null) return 'أدخل رقماً صحيحاً';
+                      return null;
                     },
                   ),
                 ],

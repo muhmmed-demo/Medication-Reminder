@@ -15,6 +15,9 @@ class AlarmSchedulerService {
 
   Future<void> scheduleAllActiveAlarms() async {
     try {
+      // 1. Cancel existing alarms so deleted or inactive medication alarms do not persist
+      await notificationService.cancelAllAlarms();
+
       final activeSchedules = await medicationRepository.getAllActiveSchedules();
       final medications = await medicationRepository.getAllMedications();
       final medMap = {for (var m in medications) m.id: m};
@@ -25,10 +28,24 @@ class AlarmSchedulerService {
         final med = medMap[schedule.medicationId];
         if (med == null || !med.isActive) continue;
 
-        // Check if medication period ended
-        if (med.endDate != null && med.endDate!.isBefore(now)) continue;
+        // Check if medication period ended (inclusive until end of day 23:59:59)
+        DateTime? endOfDay;
+        if (med.endDate != null) {
+          endOfDay = DateTime(
+            med.endDate!.year,
+            med.endDate!.month,
+            med.endDate!.day,
+            23,
+            59,
+            59,
+          );
+          if (endOfDay.isBefore(now)) continue;
+        }
 
         final nextDoseTime = _calculateNextDoseDateTime(schedule, now);
+
+        // Do not schedule if next dose falls after the medication end date
+        if (endOfDay != null && nextDoseTime.isAfter(endOfDay)) continue;
 
         // Deterministic unique ID for notification
         final notificationId = schedule.id ?? (schedule.medicationId * 100 + schedule.hour * 10 + schedule.minute);

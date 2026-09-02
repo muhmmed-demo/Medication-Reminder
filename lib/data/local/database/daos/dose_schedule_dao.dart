@@ -14,6 +14,9 @@ class DoseScheduleDao extends DatabaseAccessor<AppDatabase> with _$DoseScheduleD
   Future<List<DoseScheduleData>> getAllActiveSchedules() =>
       (select(doseSchedulesTable)..where((tbl) => tbl.isActive.equals(true))).get();
 
+  Future<List<DoseScheduleData>> getAllSchedules() =>
+      select(doseSchedulesTable).get();
+
   Stream<List<DoseScheduleData>> watchAllActiveSchedules() =>
       (select(doseSchedulesTable)..where((tbl) => tbl.isActive.equals(true))).watch();
 

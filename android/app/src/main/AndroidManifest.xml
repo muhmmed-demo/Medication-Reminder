@@ -24,6 +24,10 @@
 
     <!-- Overlay permission fallback for OEM launchers (Xiaomi / Huawei) -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    
+    <!-- Foreground Service permissions for reliable alarms on Android 14 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <application
         android:label="منبه الدواء"

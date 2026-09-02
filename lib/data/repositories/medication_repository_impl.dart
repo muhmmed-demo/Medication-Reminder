@@ -70,6 +70,12 @@ class MedicationRepositoryImpl implements MedicationRepository {
   }
 
   @override
+  Future<List<DoseSchedule>> getAllSchedules() async {
+    final list = await database.doseScheduleDao.getAllSchedules();
+    return list.map(DoseScheduleModel.fromData).toList();
+  }
+
+  @override
   Stream<List<DoseSchedule>> watchAllActiveSchedules() {
     return database.doseScheduleDao
         .watchAllActiveSchedules()

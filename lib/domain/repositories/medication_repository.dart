@@ -11,6 +11,7 @@ abstract class MedicationRepository {
   
   Future<List<DoseSchedule>> getSchedulesForMedication(int medicationId);
   Future<List<DoseSchedule>> getAllActiveSchedules();
+  Future<List<DoseSchedule>> getAllSchedules();
   Stream<List<DoseSchedule>> watchAllActiveSchedules();
   Future<DoseSchedule?> getScheduleById(int scheduleId);
   Future<void> updateSchedule(DoseSchedule schedule);

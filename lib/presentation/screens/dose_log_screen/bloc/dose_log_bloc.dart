@@ -28,10 +28,11 @@ class DoseLogBloc extends Bloc<DoseLogEvent, DoseLogState> {
     try {
       final logs = await getDoseLogsUseCase();
       final medications = await getMedicationsUseCase();
-      final medMap = {for (var m in medications) m.id!: m};
+      final medMap = {for (var m in medications) if (m.id != null) m.id!: m};
 
-      final activeSchedules = await scheduleDoseUseCase.getAllActiveSchedules();
-      final scheduleMap = {for (var s in activeSchedules) s.id!: s};
+      // Load all schedules (active and past) so history is complete
+      final allSchedules = await scheduleDoseUseCase.getAllSchedules();
+      final scheduleMap = {for (var s in allSchedules) if (s.id != null) s.id!: s};
 
       emit(DoseLogLoaded(
         logs: logs,

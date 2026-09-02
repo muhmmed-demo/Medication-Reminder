@@ -10,6 +10,10 @@ class ScheduleDoseUseCase {
     return await repository.getAllActiveSchedules();
   }
 
+  Future<List<DoseSchedule>> getAllSchedules() async {
+    return await repository.getAllSchedules();
+  }
+
   Stream<List<DoseSchedule>> watchAllActiveSchedules() {
     return repository.watchAllActiveSchedules();
   }

@@ -22,6 +22,10 @@ class MedicationDao extends DatabaseAccessor<AppDatabase> with _$MedicationDaoMi
   Future<bool> updateMedication(MedicationsTableCompanion medication) =>
       update(medicationsTable).replace(medication);
 
-  Future<int> deleteMedication(int id) =>
-      (delete(medicationsTable)..where((tbl) => tbl.id.equals(id))).go();
+  Future<int> deleteMedication(int id) {
+    return transaction(() async {
+      await (delete(doseSchedulesTable)..where((tbl) => tbl.medicationId.equals(id))).go();
+      return await (delete(medicationsTable)..where((tbl) => tbl.id.equals(id))).go();
+    });
+  }
 }
