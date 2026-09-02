@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../domain/entities/medication.dart';
 import '../../domain/entities/dose_schedule.dart';
+import '../../domain/enums/repeat_type.dart';
 import '../../domain/repositories/medication_repository.dart';
 import 'notification_service.dart';
 

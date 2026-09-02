@@ -38,6 +38,11 @@ jobs:
             mkdir -p backup_custom/android
             cp android/app/src/main/AndroidManifest.xml backup_custom/android/
           fi
+          # Backup raw audio resources
+          if [ -d "android/app/src/main/res/raw" ]; then
+            mkdir -p backup_custom/android/res
+            cp -r android/app/src/main/res/raw backup_custom/android/res/
+          fi
           # Backup our custom main.dart
           cp lib/main.dart backup_custom/
 
@@ -49,6 +54,11 @@ jobs:
           # Restore the custom AndroidManifest.xml containing our permissions
           if [ -f "backup_custom/android/AndroidManifest.xml" ]; then
             cp backup_custom/android/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          fi
+          # Restore raw audio resources
+          if [ -d "backup_custom/android/res/raw" ]; then
+            mkdir -p android/app/src/main/res/raw
+            cp -r backup_custom/android/res/raw/* android/app/src/main/res/raw/
           fi
           # Restore main.dart so flutter create doesn't overwrite it with the counter app
           cp backup_custom/main.dart lib/main.dart
