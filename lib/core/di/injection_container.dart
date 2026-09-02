@@ -93,6 +93,7 @@ Future<void> initDependencies() async {
       alarmAudioService: sl<AlarmAudioService>(),
       vibrationService: sl<VibrationService>(),
       notificationService: sl<NotificationService>(),
+      alarmSchedulerService: sl<AlarmSchedulerService>(),
     ),
   );
 }

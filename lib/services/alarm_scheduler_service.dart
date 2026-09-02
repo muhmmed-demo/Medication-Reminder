@@ -57,8 +57,22 @@ class AlarmSchedulerService {
       0,
     );
 
+    // If time has passed today, start checking from tomorrow
     if (candidate.isBefore(now)) {
       candidate = candidate.add(const Duration(days: 1));
+    }
+
+    // Handle repeat logic
+    if (schedule.repeatType == RepeatType.specificDays && schedule.repeatDays != null && schedule.repeatDays!.isNotEmpty) {
+      // Find the next available day in the repeatDays list
+      // repeatDays contains integers 1-7 (Monday=1, Sunday=7)
+      while (!schedule.repeatDays!.contains(candidate.weekday)) {
+        candidate = candidate.add(const Duration(days: 1));
+      }
+    } else if (schedule.repeatType == RepeatType.custom && schedule.cycleOnDays != null && schedule.cycleOffDays != null) {
+      // Basic cycle logic: this requires tracking the cycle start date (Phase 1)
+      // For now, if custom but not specificDays, we just do daily.
+      // Full cycle logic will be implemented when UI is ready.
     }
 
     return candidate;

@@ -5,6 +5,7 @@ import '../../../../domain/usecases/snooze_dose_usecase.dart';
 import '../../../../services/alarm_audio_service.dart';
 import '../../../../services/vibration_service.dart';
 import '../../../../services/notification_service.dart';
+import '../../../../services/alarm_scheduler_service.dart';
 import 'alarm_event.dart';
 import 'alarm_state.dart';
 
@@ -14,6 +15,7 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
   final AlarmAudioService alarmAudioService;
   final VibrationService vibrationService;
   final NotificationService notificationService;
+  final AlarmSchedulerService alarmSchedulerService;
 
   AlarmBloc({
     required this.markDoseTakenUseCase,
@@ -21,6 +23,7 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
     required this.alarmAudioService,
     required this.vibrationService,
     required this.notificationService,
+    required this.alarmSchedulerService,
   }) : super(AlarmInitial()) {
     on<StartAlarmEvent>(_onStartAlarm);
     on<TakeMedicationEvent>(_onTakeMedication);
@@ -63,6 +66,9 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
       snoozeCount: ringingState.snoozeCount,
     );
 
+    // CRITICAL: Schedule the next occurrence of this alarm!
+    await alarmSchedulerService.scheduleAllActiveAlarms();
+
     emit(AlarmTakenSuccess());
   }
 
@@ -101,6 +107,9 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
       doseScheduleId: ringingState.doseScheduleId,
       snoozeCount: nextSnoozeCount,
     );
+
+    // Also ensure all other alarms are properly scheduled just in case
+    await alarmSchedulerService.scheduleAllActiveAlarms();
 
     emit(AlarmSnoozedSuccess(
       nextSnoozeMinutes: AppConstants.snoozeDurationMinutes,

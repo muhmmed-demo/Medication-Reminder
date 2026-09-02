@@ -135,17 +135,33 @@ class NotificationService {
       utcTime.second,
     );
 
-    await _notificationsPlugin.zonedSchedule(
-      id,
-      '⏰ حان موعد علاجك!',
-      '$medicationName - $dosageDescription',
-      tzDateTime,
-      notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.alarmClock,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      payload: jsonEncode(payloadMap),
-    );
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        '⏰ حان موعد علاجك!',
+        '$medicationName - $dosageDescription',
+        tzDateTime,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.alarmClock,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: jsonEncode(payloadMap),
+      );
+    } catch (e) {
+      debugPrint('Failed to schedule exact alarm (Permission revoked?): $e');
+      // Fallback to inexact alarm if exact alarms are heavily restricted by OS
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        '⏰ حان موعد علاجك!',
+        '$medicationName - $dosageDescription',
+        tzDateTime,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: jsonEncode(payloadMap),
+      );
+    }
   }
 
   Future<void> showWarningNotification({
