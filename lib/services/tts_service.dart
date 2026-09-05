@@ -12,6 +12,7 @@ class TtsService {
       await _flutterTts.setSpeechRate(0.45); // Slower speech rate for elderly users
       await _flutterTts.setVolume(1.0);
       await _flutterTts.setPitch(1.0);
+      await _flutterTts.awaitSpeakCompletion(true);
       _isInitialized = true;
     } catch (e) {
       debugPrint('Error initializing TTS Service: $e');

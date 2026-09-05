@@ -16,6 +16,7 @@ class StartAlarmEvent extends AlarmEvent {
   final int snoozeCount;
   final bool useCustomSound;
   final String? imagePath;
+  final List<Map<String, dynamic>>? extraMedications;
 
   const StartAlarmEvent({
     required this.medicationId,
@@ -26,6 +27,7 @@ class StartAlarmEvent extends AlarmEvent {
     this.snoozeCount = 0,
     this.useCustomSound = true,
     this.imagePath,
+    this.extraMedications,
   });
 
   @override
@@ -38,9 +40,12 @@ class StartAlarmEvent extends AlarmEvent {
         snoozeCount,
         useCustomSound,
         imagePath,
+        extraMedications,
       ];
 }
 
 class TakeMedicationEvent extends AlarmEvent {}
 
 class SnoozeMedicationEvent extends AlarmEvent {}
+
+class SkipMedicationEvent extends AlarmEvent {}

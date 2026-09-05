@@ -52,13 +52,32 @@ class AlarmAudioService {
     }
   }
 
-  Future<void> startAlarmSound({bool useCustomSound = true}) async {
+  /// Sets the in-app audio player volume (0.0 to 1.0)
+  Future<void> setPlayerVolume(double volume) async {
+    try {
+      await _player.setVolume(volume);
+    } catch (e) {
+      debugPrint('Error setting player volume: $e');
+    }
+  }
+
+  /// Dips alarm music to 15% so spoken TTS name is crisp and audible for the elderly
+  Future<void> duckVolume() async {
+    await setPlayerVolume(0.15);
+  }
+
+  /// Raises alarm music back to 100% after speech finishes
+  Future<void> unduckVolume() async {
+    await setPlayerVolume(1.0);
+  }
+
+  Future<void> startAlarmSound({bool useCustomSound = true, double initialVolume = 1.0}) async {
     if (_isPlaying) return;
 
     try {
       await maximizeVolume();
 
-      // Play bundled alarm sound in a continuous loop
+      await _player.setVolume(initialVolume);
       await _player.play(
         AssetSource(AppConstants.customAlarmSoundAsset.replaceFirst('assets/', '')),
         mode: PlayerMode.mediaPlayer,

@@ -24,20 +24,27 @@ class MarkDoseTakenUseCase {
   }) async {
     final now = DateTime.now();
     
-    // 1. Log the dose
+    // 1. Log the dose (avoid duplicate entries by updating existing log for the same scheduled time if present)
     if (logId != null) {
       await repository.updateDoseLogStatus(logId, DoseStatus.taken, now, snoozeCount);
     } else {
-      await repository.insertDoseLog(
-        DoseLog(
-          doseScheduleId: doseScheduleId,
-          scheduledDateTime: scheduledDateTime,
-          actualDateTime: now,
-          status: DoseStatus.taken,
-          snoozeCount: snoozeCount,
-          createdAt: now,
-        ),
-      );
+      final existingLog =
+          await repository.getLatestLogForSchedule(doseScheduleId, scheduledDateTime);
+      if (existingLog != null && existingLog.id != null) {
+        await repository.updateDoseLogStatus(
+            existingLog.id!, DoseStatus.taken, now, snoozeCount);
+      } else {
+        await repository.insertDoseLog(
+          DoseLog(
+            doseScheduleId: doseScheduleId,
+            scheduledDateTime: scheduledDateTime,
+            actualDateTime: now,
+            status: DoseStatus.taken,
+            snoozeCount: snoozeCount,
+            createdAt: now,
+          ),
+        );
+      }
     }
 
     // 2. Handle Inventory Deduction (Phase 1 logic)
@@ -52,9 +59,9 @@ class MarkDoseTakenUseCase {
           medication.copyWith(inventoryCount: newInventory < 0 ? 0 : newInventory),
         );
 
-        // Check if we hit the refill threshold
+        // Check if we hit or dropped below the refill threshold
         final threshold = medication.refillThreshold ?? 3; // Default to 3 if not set but inventory is tracked
-        if (newInventory == threshold || newInventory == 0) {
+        if (newInventory <= threshold) {
           await notificationService.showWarningNotification(
             id: medication.id! * 1000, // Unique ID for inventory warnings
             title: '⚠️ تنبيه انخفاض الدواء',

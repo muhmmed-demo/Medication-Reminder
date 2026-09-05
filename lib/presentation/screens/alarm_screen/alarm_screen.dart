@@ -13,7 +13,7 @@ class AlarmScreen extends StatelessWidget {
 
   void _closeScreen(BuildContext context) {
     if (Navigator.of(context).canPop()) {
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      Navigator.of(context).pop();
     } else {
       Navigator.of(context).pushReplacementNamed('/');
     }
@@ -35,6 +35,14 @@ class AlarmScreen extends StatelessWidget {
                 ),
               );
               _closeScreen(context);
+            } else if (state is AlarmSkippedSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('تم تخطي الجرعة وتسجيلها في السجل ⏭️'),
+                  backgroundColor: Color(0xFF64748B),
+                ),
+              );
+              _closeScreen(context);
             } else if (state is AlarmSnoozedSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -51,6 +59,14 @@ class AlarmScreen extends StatelessWidget {
             if (state is AlarmInitial) {
               if (initialPayload != null) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
+                  List<Map<String, dynamic>>? extraMeds;
+                  final rawExtra = initialPayload!['extraMedications'];
+                  if (rawExtra is List) {
+                    extraMeds = rawExtra
+                        .map((item) => Map<String, dynamic>.from(item as Map))
+                        .toList();
+                  }
+
                   context.read<AlarmBloc>().add(
                         StartAlarmEvent(
                           medicationId: initialPayload!['medicationId'] as int? ?? 0,
@@ -63,6 +79,7 @@ class AlarmScreen extends StatelessWidget {
                           snoozeCount: initialPayload!['snoozeCount'] as int? ?? 0,
                           useCustomSound: initialPayload!['useCustomSound'] as bool? ?? true,
                           imagePath: initialPayload!['imagePath'] as String?,
+                          extraMedications: extraMeds,
                         ),
                       );
                 });
@@ -77,9 +94,12 @@ class AlarmScreen extends StatelessWidget {
                   state.imagePath!.isNotEmpty &&
                   File(state.imagePath!).existsSync();
 
+              final hasMultipleMeds =
+                  state.extraMedications != null && state.extraMedications!.isNotEmpty;
+
               return SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     child: Column(
@@ -88,7 +108,7 @@ class AlarmScreen extends StatelessWidget {
                         const SizedBox(height: 10),
                         // Header Alarm Icon & Status
                         Container(
-                          padding: const EdgeInsets.all(22),
+                          padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: const Color(0xFFEF4444).withAlpha(40),
@@ -99,21 +119,23 @@ class AlarmScreen extends StatelessWidget {
                           ),
                           child: const Icon(
                             Icons.alarm_on_rounded,
-                            size: 64,
+                            size: 60,
                             color: Color(0xFFEF4444),
                           ),
                         ),
-                        const SizedBox(height: 14),
-                        const Text(
-                          '⏰ حان موعد جرعة العلاج الآن!',
+                        const SizedBox(height: 12),
+                        Text(
+                          hasMultipleMeds
+                              ? '⏰ حان موعد أدويتك (${state.extraMedications!.length + 1} أدوية)!'
+                              : '⏰ حان موعد جرعة العلاج الآن!',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
 
                         // Arabic Voice Announcement Badge (Elderly Assistance)
                         Container(
@@ -139,86 +161,49 @@ class AlarmScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
 
-                        // Large High-Contrast Medication Details Card
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(22),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E293B),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: const Color(0xFF334155), width: 1.5),
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                state.medicationName,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF38BDF8),
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                'الجرعة المطلوبة: ${state.dosageDescription}',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFE2E8F0),
-                                ),
-                              ),
-
-                              // Real Pill / Box Photo (Elderly Visual Aid)
-                              if (hasValidImage) ...[
-                                const SizedBox(height: 16),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: const Color(0xFF38BDF8), width: 2),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withAlpha(80),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(14),
-                                    child: Image.file(
-                                      File(state.imagePath!),
-                                      height: 180,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                ),
-                              ],
-
-                              if (state.snoozeCount > 0)
-                                Container(
-                                  margin: const EdgeInsets.only(top: 14),
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.amber.withAlpha(40),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    'تم التأجيل مسبقاً (${state.snoozeCount}/${state.maxSnoozeCount}) مرات',
-                                    style: const TextStyle(
-                                      color: Colors.amberAccent,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
+                        // Primary Medication Card
+                        _buildMedicationCard(
+                          name: state.medicationName,
+                          dosage: state.dosageDescription,
+                          imagePath: state.imagePath,
+                          hasValidImage: hasValidImage,
                         ),
+
+                        // If multiple medications share this exact time, display each one!
+                        if (hasMultipleMeds) ...[
+                          const SizedBox(height: 12),
+                          for (final extra in state.extraMedications!) ...[
+                            _buildMedicationCard(
+                              name: extra['medicationName'] as String? ?? '',
+                              dosage: extra['dosageDescription'] as String? ?? '',
+                              imagePath: extra['imagePath'] as String?,
+                              hasValidImage: extra['imagePath'] != null &&
+                                  (extra['imagePath'] as String).isNotEmpty &&
+                                  File(extra['imagePath'] as String).existsSync(),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                        ],
+
+                        if (state.snoozeCount > 0)
+                          Container(
+                            margin: const EdgeInsets.only(top: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withAlpha(40),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'تم التأجيل مسبقاً (${state.snoozeCount}/${state.maxSnoozeCount}) مرات',
+                              style: const TextStyle(
+                                color: Colors.amberAccent,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
 
                         const SizedBox(height: 24),
 
@@ -226,7 +211,9 @@ class AlarmScreen extends StatelessWidget {
                         SizedBox(
                           width: double.infinity,
                           child: AlarmActionButton(
-                            label: 'تم أخذ الجرعة الآن ✅',
+                            label: hasMultipleMeds
+                                ? 'تم أخذ جميع الأدوية الآن ✅'
+                                : 'تم أخذ الجرعة الآن ✅',
                             icon: Icons.check_circle_rounded,
                             color: const Color(0xFF10B981),
                             isPrimary: true,
@@ -235,7 +222,7 @@ class AlarmScreen extends StatelessWidget {
                             },
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
                           child: state.canSnooze
@@ -265,6 +252,26 @@ class AlarmScreen extends StatelessWidget {
                                   ),
                                 ),
                         ),
+                        const SizedBox(height: 12),
+
+                        // Skip Dose Action (Safe Medical Dismissal)
+                        SizedBox(
+                          width: double.infinity,
+                          child: TextButton.icon(
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.grey.shade400,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            icon: const Icon(Icons.skip_next_rounded, size: 22),
+                            label: const Text(
+                              'تخطي هذه الجرعة (للصيام أو استشارة الطبيب) ⏭️',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                            onPressed: () {
+                              _confirmSkipDose(context);
+                            },
+                          ),
+                        ),
                         const SizedBox(height: 10),
                       ],
                     ),
@@ -276,6 +283,98 @@ class AlarmScreen extends StatelessWidget {
             return const SizedBox.shrink();
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildMedicationCard({
+    required String name,
+    required String dosage,
+    String? imagePath,
+    required bool hasValidImage,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF334155), width: 1.5),
+      ),
+      child: Column(
+        children: [
+          Text(
+            name,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF38BDF8),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'الجرعة المطلوبة: $dosage',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFFE2E8F0),
+            ),
+          ),
+          if (hasValidImage && imagePath != null) ...[
+            const SizedBox(height: 14),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF38BDF8), width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(80),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Image.file(
+                  File(imagePath),
+                  height: 160,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _confirmSkipDose(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('تأكيد تخطي الجرعة', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'هل تريد بالتأكيد تخطي هذه الجرعة؟ سيتم تسجيلها كجرعة فائتة في السجل الطبي ولن يتم خصمها من المخزون.',
+          style: TextStyle(color: Color(0xFFCBD5E1)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<AlarmBloc>().add(SkipMedicationEvent());
+            },
+            child: const Text('تخطي الآن', style: TextStyle(color: Colors.orangeAccent)),
+          ),
+        ],
       ),
     );
   }

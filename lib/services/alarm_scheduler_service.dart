@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../domain/entities/medication.dart';
 import '../../domain/entities/dose_schedule.dart';
 import '../../domain/enums/repeat_type.dart';
@@ -25,6 +26,10 @@ class AlarmSchedulerService {
 
       final now = DateTime.now();
 
+      // Group active doses that fall on the exact same DateTime to avoid notification collision
+      // Map key: "YYYY-MM-DD HH:MM"
+      final Map<String, List<Map<String, dynamic>>> timeGroups = {};
+
       for (final schedule in activeSchedules) {
         final med = medMap[schedule.medicationId];
         if (med == null || !med.isActive) continue;
@@ -48,17 +53,60 @@ class AlarmSchedulerService {
         // Do not schedule if next dose falls after the medication end date
         if (endOfDay != null && nextDoseTime.isAfter(endOfDay)) continue;
 
-        // Deterministic unique ID for notification
-        final notificationId = schedule.id ?? (schedule.medicationId * 100 + schedule.hour * 10 + schedule.minute);
+        final timeKey =
+            '${nextDoseTime.year}-${nextDoseTime.month.toString().padLeft(2, '0')}-${nextDoseTime.day.toString().padLeft(2, '0')} ${nextDoseTime.hour.toString().padLeft(2, '0')}:${nextDoseTime.minute.toString().padLeft(2, '0')}';
+
+        timeGroups.putIfAbsent(timeKey, () => []).add({
+          'schedule': schedule,
+          'medication': med,
+          'doseTime': nextDoseTime,
+        });
+      }
+
+      // Schedule each group (unified alarm if multiple medications share the exact same time)
+      for (final group in timeGroups.values) {
+        if (group.isEmpty) continue;
+
+        final primary = group.first;
+        final primarySchedule = primary['schedule'] as DoseSchedule;
+        final primaryMed = primary['medication'] as Medication;
+        final doseTime = primary['doseTime'] as DateTime;
+
+        final extraMedications = group.skip(1).map((item) {
+          final s = item['schedule'] as DoseSchedule;
+          final m = item['medication'] as Medication;
+          return {
+            'medicationId': m.id ?? 0,
+            'doseScheduleId': s.id ?? 0,
+            'medicationName': m.name,
+            'dosageDescription': m.dosageDescription,
+            'imagePath': m.imagePath,
+          };
+        }).toList();
+
+        // Determine repeating components so alarms survive missed days without app opening
+        DateTimeComponents? matchComponents;
+        if (primarySchedule.repeatType == RepeatType.daily) {
+          matchComponents = DateTimeComponents.time;
+        } else if (primarySchedule.repeatType == RepeatType.specificDays) {
+          matchComponents = DateTimeComponents.dayOfWeekAndTime;
+        }
+
+        final notificationId = primarySchedule.id ??
+            (primarySchedule.medicationId * 100 +
+                primarySchedule.hour * 10 +
+                primarySchedule.minute);
 
         await notificationService.scheduleAlarm(
           id: notificationId,
-          medicationName: med.name,
-          dosageDescription: med.dosageDescription,
-          scheduledDateTime: nextDoseTime,
-          medicationId: med.id ?? 0,
-          doseScheduleId: schedule.id ?? 0,
-          imagePath: med.imagePath,
+          medicationName: primaryMed.name,
+          dosageDescription: primaryMed.dosageDescription,
+          scheduledDateTime: doseTime,
+          medicationId: primaryMed.id ?? 0,
+          doseScheduleId: primarySchedule.id ?? 0,
+          imagePath: primaryMed.imagePath,
+          matchDateTimeComponents: matchComponents,
+          extraMedications: extraMedications.isNotEmpty ? extraMedications : null,
         );
       }
     } catch (e) {
@@ -76,22 +124,33 @@ class AlarmSchedulerService {
       0,
     );
 
-    // If time has passed today, start checking from tomorrow
+    // If time has passed today, advance to the next calendar day preserving exact hour and minute (DST Safe)
     if (candidate.isBefore(now)) {
-      candidate = candidate.add(const Duration(days: 1));
+      candidate = DateTime(
+        candidate.year,
+        candidate.month,
+        candidate.day + 1,
+        schedule.hour,
+        schedule.minute,
+        0,
+      );
     }
 
     // Handle repeat logic
-    if (schedule.repeatType == RepeatType.specificDays && schedule.repeatDays != null && schedule.repeatDays!.isNotEmpty) {
-      // Find the next available day in the repeatDays list
-      // repeatDays contains integers 1-7 (Monday=1, Sunday=7)
+    if (schedule.repeatType == RepeatType.specificDays &&
+        schedule.repeatDays != null &&
+        schedule.repeatDays!.isNotEmpty) {
+      // Advance day by day until a matching weekday is found (DST Safe)
       while (!schedule.repeatDays!.contains(candidate.weekday)) {
-        candidate = candidate.add(const Duration(days: 1));
+        candidate = DateTime(
+          candidate.year,
+          candidate.month,
+          candidate.day + 1,
+          schedule.hour,
+          schedule.minute,
+          0,
+        );
       }
-    } else if (schedule.repeatType == RepeatType.custom && schedule.cycleOnDays != null && schedule.cycleOffDays != null) {
-      // Basic cycle logic: this requires tracking the cycle start date (Phase 1)
-      // For now, if custom but not specificDays, we just do daily.
-      // Full cycle logic will be implemented when UI is ready.
     }
 
     return candidate;

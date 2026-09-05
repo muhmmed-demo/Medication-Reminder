@@ -10,6 +10,7 @@ import '../../domain/usecases/delete_medication_usecase.dart';
 import '../../domain/usecases/schedule_dose_usecase.dart';
 import '../../domain/usecases/mark_dose_taken_usecase.dart';
 import '../../domain/usecases/snooze_dose_usecase.dart';
+import '../../domain/usecases/skip_dose_usecase.dart';
 import '../../domain/usecases/get_dose_logs_usecase.dart';
 import '../../services/notification_service.dart';
 import '../../services/alarm_audio_service.dart';
@@ -48,6 +49,7 @@ Future<void> initDependencies() async {
     notificationService: sl<NotificationService>(),
   ));
   sl.registerLazySingleton(() => SnoozeDoseUseCase(sl<DoseLogRepository>()));
+  sl.registerLazySingleton(() => SkipDoseUseCase(sl<DoseLogRepository>()));
   sl.registerLazySingleton(() => GetDoseLogsUseCase(sl<DoseLogRepository>()));
 
   // 4. Services
@@ -92,6 +94,7 @@ Future<void> initDependencies() async {
     () => AlarmBloc(
       markDoseTakenUseCase: sl<MarkDoseTakenUseCase>(),
       snoozeDoseUseCase: sl<SnoozeDoseUseCase>(),
+      skipDoseUseCase: sl<SkipDoseUseCase>(),
       alarmAudioService: sl<AlarmAudioService>(),
       vibrationService: sl<VibrationService>(),
       notificationService: sl<NotificationService>(),

@@ -58,6 +58,17 @@ class MedicationApp extends StatelessWidget {
         onGenerateRoute: AppRouter.onGenerateRoute,
         initialRoute: initialRoute,
         onGenerateInitialRoutes: (String initialRouteName) {
+          if (initialRouteName == AppRouter.alarm) {
+            return [
+              AppRouter.onGenerateRoute(const RouteSettings(name: AppRouter.home))!,
+              AppRouter.onGenerateRoute(
+                RouteSettings(
+                  name: AppRouter.alarm,
+                  arguments: initialArguments,
+                ),
+              )!,
+            ];
+          }
           return [
             AppRouter.onGenerateRoute(
               RouteSettings(

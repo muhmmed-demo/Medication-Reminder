@@ -100,6 +100,8 @@ class NotificationService {
     int snoozeCount = 0,
     bool useCustomSound = true,
     String? imagePath,
+    DateTimeComponents? matchDateTimeComponents,
+    List<Map<String, dynamic>>? extraMedications,
   }) async {
     final channelId = useCustomSound
         ? NotificationConstants.alarmChannelId
@@ -137,6 +139,7 @@ class NotificationService {
       'snoozeCount': snoozeCount,
       'useCustomSound': useCustomSound,
       'imagePath': imagePath,
+      'extraMedications': extraMedications,
     };
 
     var tzDateTime = tz.TZDateTime.from(scheduledDateTime, tz.local);
@@ -146,16 +149,24 @@ class NotificationService {
       tzDateTime = tzNow.add(const Duration(seconds: 5));
     }
 
+    final notifTitle = extraMedications != null && extraMedications.isNotEmpty
+        ? '⏰ حان موعد أدويتك (${extraMedications.length + 1} أدوية)'
+        : '⏰ حان موعد علاجك!';
+    final notifBody = extraMedications != null && extraMedications.isNotEmpty
+        ? '$medicationName + ${extraMedications.map((m) => m['medicationName']).join(' + ')}'
+        : '$medicationName - $dosageDescription';
+
     try {
       await _notificationsPlugin.zonedSchedule(
         id,
-        '⏰ حان موعد علاجك!',
-        '$medicationName - $dosageDescription',
+        notifTitle,
+        notifBody,
         tzDateTime,
         notificationDetails,
         androidScheduleMode: AndroidScheduleMode.alarmClock,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: matchDateTimeComponents,
         payload: jsonEncode(payloadMap),
       );
     } catch (e) {
@@ -163,13 +174,14 @@ class NotificationService {
       // Fallback to inexact alarm if exact alarms are heavily restricted by OS
       await _notificationsPlugin.zonedSchedule(
         id,
-        '⏰ حان موعد علاجك!',
-        '$medicationName - $dosageDescription',
+        notifTitle,
+        notifBody,
         tzDateTime,
         notificationDetails,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: matchDateTimeComponents,
         payload: jsonEncode(payloadMap),
       );
     }
