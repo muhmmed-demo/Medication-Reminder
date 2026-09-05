@@ -66,13 +66,34 @@ jobs:
           fi
 
       - name: Install Dependencies
-        run: flutter pub get
+        run: |
+          flutter pub get 2>&1 | tee pub_get.log || {
+            echo "### Flutter Pub Get Error Log:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat pub_get.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
 
       - name: Generate Database Code (Drift)
-        run: dart run build_runner build --delete-conflicting-outputs
+        run: |
+          dart run build_runner build --delete-conflicting-outputs 2>&1 | tee build_runner.log || {
+            echo "### Build Runner Error Log:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat build_runner.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
 
       - name: Build APK
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release 2>&1 | tee build_apk.log || {
+            echo "### Flutter Build APK Error Log:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -n 100 build_apk.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
 
       - name: Upload APK Release
         uses: actions/upload-artifact@v4
