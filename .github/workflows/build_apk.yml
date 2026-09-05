@@ -37,10 +37,12 @@ jobs:
             cp -r android backup_custom/
             rm -rf android
           fi
-          cp lib/main.dart backup_custom/
 
-      - name: Initialize missing Flutter Android project files
-        run: flutter create --platforms=android --project-name medication_reminder --org com.example .
+      - name: Generate Android Scaffolding
+        run: |
+          flutter create --platforms=android --project-name medication_reminder --org com.example /tmp/template_app
+          cp -r /tmp/template_app/android ./android
+          rm -rf /tmp/template_app
 
       - name: Restore Custom Files
         run: |
@@ -51,7 +53,6 @@ jobs:
             cp -r backup_custom/android/app/src/main/res/* android/app/src/main/res/
             cp -f backup_custom/android/app/proguard-rules.pro android/app/proguard-rules.pro
           fi
-          cp -f backup_custom/main.dart lib/main.dart
           rm -rf backup_custom
 
       - name: Enable Core Library Desugaring
