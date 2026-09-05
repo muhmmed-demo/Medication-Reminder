@@ -30,7 +30,8 @@ jobs:
       - name: Print Flutter version
         run: flutter --version
 
-      - name: Backup Custom Files
+      # ─── Backup & Scaffold ────────────────────────────────────────────────
+      - name: Backup Custom Android Files
         run: |
           mkdir -p backup_custom
           if [ -d "android" ]; then
@@ -38,82 +39,92 @@ jobs:
             rm -rf android
           fi
 
-      - name: Generate Android Scaffolding
+      - name: Generate Fresh Android Scaffolding
         run: |
-          flutter create --platforms=android --project-name medication_reminder --org com.example /tmp/template_app
+          flutter create --platforms=android \
+            --project-name medication_reminder \
+            --org com.example \
+            /tmp/template_app
           cp -r /tmp/template_app/android ./android
           rm -rf /tmp/template_app
 
-      - name: Restore Custom Files
+      - name: Restore Custom Android Files
         run: |
           if [ -d "backup_custom/android/app" ]; then
-            cp -f backup_custom/android/app/src/main/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+            # AndroidManifest
+            cp -f backup_custom/android/app/src/main/AndroidManifest.xml \
+                  android/app/src/main/AndroidManifest.xml
+
+            # Resources (mipmap icons, drawables, sounds)
             mkdir -p android/app/src/main/res/raw
             mkdir -p android/app/src/main/res/drawable
-            cp -rf backup_custom/android/app/src/main/res/* android/app/src/main/res/
-            cp -f backup_custom/android/app/proguard-rules.pro android/app/proguard-rules.pro
+            cp -rf backup_custom/android/app/src/main/res/* \
+                   android/app/src/main/res/
+
+            # Proguard rules
+            cp -f backup_custom/android/app/proguard-rules.pro \
+                  android/app/proguard-rules.pro
+
+            # Custom Kotlin sources (MainActivity.kt + any other classes)
             if [ -d "backup_custom/android/app/src/main/kotlin" ]; then
               mkdir -p android/app/src/main/kotlin
-              cp -rf backup_custom/android/app/src/main/kotlin/* android/app/src/main/kotlin/
+              cp -rf backup_custom/android/app/src/main/kotlin/* \
+                     android/app/src/main/kotlin/
             fi
           fi
           rm -rf backup_custom
 
-      - name: Enable Core Library Desugaring and CompileSdk 36
+      # ─── Patch Gradle Files ────────────────────────────────────────────────
+      - name: Patch app build.gradle - compileSdk 36 + Core Desugaring
         run: |
+          # Detect Kotlin DSL vs Groovy DSL
+          APP_GRADLE=""
           if [ -f "android/app/build.gradle.kts" ]; then
-            sed -i 's/compileOptions {/compileOptions {\n        isCoreLibraryDesugaringEnabled = true/g' android/app/build.gradle.kts
-            echo 'dependencies { coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4") }' >> android/app/build.gradle.kts
+            APP_GRADLE="android/app/build.gradle.kts"
+
+            # Raise compileSdk to 36 (handles both flutter.compileSdkVersion and hardcoded values)
+            sed -i \
+              -e 's/compileSdk = flutter\.compileSdkVersion/compileSdk = 36/g' \
+              -e 's/compileSdkVersion(flutter\.compileSdkVersion)/compileSdk = 36/g' \
+              -e 's/compileSdk = [0-9]*/compileSdk = 36/g' \
+              "$APP_GRADLE"
+
+            # Enable Core Library Desugaring
+            sed -i \
+              's/compileOptions {/compileOptions {\n        isCoreLibraryDesugaringEnabled = true/g' \
+              "$APP_GRADLE"
+
+            # Append desugaring dependency
+            printf '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")\n}\n' \
+              >> "$APP_GRADLE"
+
           elif [ -f "android/app/build.gradle" ]; then
-            sed -i 's/compileOptions {/compileOptions {\n        coreLibraryDesugaringEnabled true/g' android/app/build.gradle
-            echo 'dependencies { coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.0.4" }' >> android/app/build.gradle
+            APP_GRADLE="android/app/build.gradle"
+
+            sed -i \
+              -e 's/compileSdkVersion flutter\.compileSdkVersion/compileSdkVersion 36/g' \
+              -e 's/compileSdk flutter\.compileSdkVersion/compileSdk 36/g' \
+              -e 's/compileSdkVersion [0-9]*/compileSdkVersion 36/g' \
+              -e 's/compileSdk [0-9]*/compileSdk 36/g' \
+              "$APP_GRADLE"
+
+            sed -i \
+              's/compileOptions {/compileOptions {\n        coreLibraryDesugaringEnabled true/g' \
+              "$APP_GRADLE"
+
+            printf '\ndependencies {\n    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.0.4"\n}\n' \
+              >> "$APP_GRADLE"
           fi
 
-          if [ -f "android/build.gradle.kts" ]; then
-            cat << 'EOF' >> android/build.gradle.kts
-
-          subprojects {
-              afterEvaluate {
-                  if (project.hasProperty("android")) {
-                      val androidExt = project.extensions.findByName("android")
-                      if (androidExt != null) {
-                          try {
-                              val m = androidExt.javaClass.getMethod("setCompileSdkVersion", Int::class.javaPrimitiveType)
-                              m.invoke(androidExt, 36)
-                          } catch (_: Throwable) {
-                              try {
-                                  val m = androidExt.javaClass.getMethod("setCompileSdk", java.lang.Integer::class.java)
-                                  m.invoke(androidExt, 36)
-                              } catch (_: Throwable) {}
-                          }
-                      }
-                  }
-              }
-          }
-          EOF
-          elif [ -f "android/build.gradle" ]; then
-            cat << 'EOF' >> android/build.gradle
-
-          subprojects {
-              afterEvaluate { project ->
-                  if (project.hasProperty('android')) {
-                      project.android {
-                          compileSdkVersion 36
-                      }
-                  }
-              }
-          }
-          EOF
-          fi
-
-          echo "=== ANDROID APP BUILD GRADLE ==="
-          cat android/app/build.gradle* || true
+          echo "=== PATCHED APP BUILD GRADLE ==="
+          cat "$APP_GRADLE" || true
           echo "================================="
 
-      - name: Install Dependencies
+      # ─── Dependencies & Code Generation ───────────────────────────────────
+      - name: Install Flutter Dependencies
         run: |
           flutter pub get 2>&1 | tee pub_get.log || {
-            echo "### Flutter Pub Get Error Log:" >> $GITHUB_STEP_SUMMARY
+            echo "### Pub Get Error:" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat pub_get.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
@@ -123,28 +134,30 @@ jobs:
       - name: Generate Database Code (Drift)
         run: |
           dart run build_runner build --delete-conflicting-outputs 2>&1 | tee build_runner.log || {
-            echo "### Build Runner Error Log:" >> $GITHUB_STEP_SUMMARY
+            echo "### Build Runner Error:" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat build_runner.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             exit 1
           }
 
-      - name: Build APK
+      # ─── Build ─────────────────────────────────────────────────────────────
+      - name: Build Release APK
         run: |
           set -o pipefail
           flutter build apk --release 2>&1 | tee build_apk.log || {
             echo "================ FLUTTER BUILD ERROR ================"
-            cat build_apk.log | tail -n 120
+            tail -n 120 build_apk.log
             echo "====================================================="
-            echo "### Flutter Build APK Error Log:" >> $GITHUB_STEP_SUMMARY
+            echo "### Flutter Build APK Error:" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             tail -n 60 build_apk.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             exit 1
           }
 
-      - name: Locate and Collect Built APK
+      # ─── Collect & Upload ──────────────────────────────────────────────────
+      - name: Collect Built APK
         run: |
           mkdir -p apk_output
           find . -name "*.apk" -exec cp {} apk_output/ \;
@@ -153,7 +166,7 @@ jobs:
           ls -la apk_output/ | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload APK Release
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Medication-Reminder-APK
