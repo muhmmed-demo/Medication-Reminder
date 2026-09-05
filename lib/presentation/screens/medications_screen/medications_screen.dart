@@ -67,7 +67,27 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('أدويتي 💊'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/images/app_logo.png',
+                width: 32,
+                height: 32,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.medication_rounded),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'حارس الدواء',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_active_outlined),

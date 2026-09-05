@@ -39,7 +39,7 @@ class MedicationApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'منبه الدواء',
+        title: 'حارس الدواء',
         navigatorKey: rootNavigatorKey,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
