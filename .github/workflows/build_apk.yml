@@ -95,8 +95,16 @@ jobs:
             exit 1
           }
 
+      - name: Locate Built APK
+        run: |
+          echo "### Built APK Locations:" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          find build -name "*.apk" | tee -a $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
       - name: Upload APK Release
         uses: actions/upload-artifact@v4
         with:
           name: Medication-Reminder-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/**/*.apk
+          if-no-files-found: error
