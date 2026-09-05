@@ -95,16 +95,18 @@ jobs:
             exit 1
           }
 
-      - name: Locate Built APK
+      - name: Locate and Collect Built APK
         run: |
-          echo "### Built APK Locations:" >> $GITHUB_STEP_SUMMARY
+          mkdir -p apk_output
+          find . -name "*.apk" -exec cp {} apk_output/ \;
+          echo "### Collected APKs:" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          find build -name "*.apk" | tee -a $GITHUB_STEP_SUMMARY
+          ls -la apk_output/ | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Upload APK Release
         uses: actions/upload-artifact@v4
         with:
           name: Medication-Reminder-APK
-          path: build/**/*.apk
+          path: apk_output/*.apk
           if-no-files-found: error
