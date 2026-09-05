@@ -33,30 +33,36 @@ jobs:
       - name: Backup Custom Files
         run: |
           mkdir -p backup_custom
-          # Backup whole android/app directory containing manifests, resources, proguard rules
-          if [ -d "android/app" ]; then
-            cp -r android/app backup_custom/
+          if [ -d "android" ]; then
+            cp -r android backup_custom/
+            rm -rf android
           fi
-          # Backup our custom main.dart
           cp lib/main.dart backup_custom/
 
       - name: Initialize missing Flutter Android project files
-        run: flutter create --platforms=android .
+        run: flutter create --platforms=android --project-name medication_reminder --org com.example .
 
       - name: Restore Custom Files
         run: |
-          # Restore the custom android/app files
-          if [ -d "backup_custom/app" ]; then
-            cp -r backup_custom/app/* android/app/
+          if [ -d "backup_custom/android/app" ]; then
+            cp -f backup_custom/android/app/src/main/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+            mkdir -p android/app/src/main/res/raw
+            mkdir -p android/app/src/main/res/drawable
+            cp -r backup_custom/android/app/src/main/res/* android/app/src/main/res/
+            cp -f backup_custom/android/app/proguard-rules.pro android/app/proguard-rules.pro
           fi
-          # Restore main.dart so flutter create doesn't overwrite it with the counter app
-          cp backup_custom/main.dart lib/main.dart
+          cp -f backup_custom/main.dart lib/main.dart
           rm -rf backup_custom
 
       - name: Enable Core Library Desugaring
         run: |
-          sed -i 's/compileOptions {/compileOptions {\n        isCoreLibraryDesugaringEnabled = true/g' android/app/build.gradle.kts
-          echo 'dependencies { coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4") }' >> android/app/build.gradle.kts
+          if [ -f "android/app/build.gradle.kts" ]; then
+            sed -i 's/compileOptions {/compileOptions {\n        isCoreLibraryDesugaringEnabled = true/g' android/app/build.gradle.kts
+            echo 'dependencies { coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4") }' >> android/app/build.gradle.kts
+          elif [ -f "android/app/build.gradle" ]; then
+            sed -i 's/compileOptions {/compileOptions {\n        coreLibraryDesugaringEnabled true/g' android/app/build.gradle
+            echo 'dependencies { coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.0.4" }' >> android/app/build.gradle
+          fi
 
       - name: Install Dependencies
         run: flutter pub get
