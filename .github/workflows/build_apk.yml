@@ -64,6 +64,9 @@ jobs:
             sed -i 's/compileOptions {/compileOptions {\n        coreLibraryDesugaringEnabled true/g' android/app/build.gradle
             echo 'dependencies { coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.0.4" }' >> android/app/build.gradle
           fi
+          echo "=== ANDROID APP BUILD GRADLE ==="
+          cat android/app/build.gradle* || true
+          echo "================================="
 
       - name: Install Dependencies
         run: |
@@ -87,10 +90,14 @@ jobs:
 
       - name: Build APK
         run: |
+          set -o pipefail
           flutter build apk --release 2>&1 | tee build_apk.log || {
+            echo "================ FLUTTER BUILD ERROR ================"
+            cat build_apk.log | tail -n 120
+            echo "====================================================="
             echo "### Flutter Build APK Error Log:" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -n 100 build_apk.log >> $GITHUB_STEP_SUMMARY
+            tail -n 60 build_apk.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             exit 1
           }
