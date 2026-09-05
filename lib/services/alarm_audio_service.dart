@@ -1,10 +1,12 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_volume_controller/flutter_volume_controller.dart';
+import 'package:flutter/services.dart';
 import '../core/constants/app_constants.dart';
 
 class AlarmAudioService {
   final AudioPlayer _player = AudioPlayer();
+  static const MethodChannel _volumeChannel =
+      MethodChannel('com.example.medication_reminder/volume');
   bool _isPlaying = false;
   double? _originalVolume;
 
@@ -32,9 +34,8 @@ class AlarmAudioService {
   /// Bypasses silent mode by saving current volume and setting device volume to 100%
   Future<void> maximizeVolume() async {
     try {
-      await FlutterVolumeController.updateShowSystemUI(false);
-      _originalVolume ??= await FlutterVolumeController.getVolume();
-      await FlutterVolumeController.setVolume(1.0);
+      _originalVolume ??= await _getDeviceVolume();
+      await _setDeviceVolume(1.0);
     } catch (e) {
       debugPrint('Error setting volume to max: $e');
     }
@@ -44,11 +45,29 @@ class AlarmAudioService {
   Future<void> restoreVolume() async {
     try {
       if (_originalVolume != null) {
-        await FlutterVolumeController.setVolume(_originalVolume!);
+        await _setDeviceVolume(_originalVolume!);
         _originalVolume = null;
       }
     } catch (e) {
       debugPrint('Error restoring volume: $e');
+    }
+  }
+
+  Future<double> _getDeviceVolume() async {
+    try {
+      final double? vol = await _volumeChannel.invokeMethod<double>('getVolume');
+      return vol ?? 1.0;
+    } catch (e) {
+      debugPrint('Error getting volume via method channel: $e');
+      return 1.0;
+    }
+  }
+
+  Future<void> _setDeviceVolume(double volume) async {
+    try {
+      await _volumeChannel.invokeMethod('setVolume', {'volume': volume});
+    } catch (e) {
+      debugPrint('Error setting volume via method channel: $e');
     }
   }
 

@@ -52,10 +52,14 @@ jobs:
             mkdir -p android/app/src/main/res/drawable
             cp -rf backup_custom/android/app/src/main/res/* android/app/src/main/res/
             cp -f backup_custom/android/app/proguard-rules.pro android/app/proguard-rules.pro
+            if [ -d "backup_custom/android/app/src/main/kotlin" ]; then
+              mkdir -p android/app/src/main/kotlin
+              cp -rf backup_custom/android/app/src/main/kotlin/* android/app/src/main/kotlin/
+            fi
           fi
           rm -rf backup_custom
 
-      - name: Enable Core Library Desugaring
+      - name: Enable Core Library Desugaring and CompileSdk 36
         run: |
           if [ -f "android/app/build.gradle.kts" ]; then
             sed -i 's/compileOptions {/compileOptions {\n        isCoreLibraryDesugaringEnabled = true/g' android/app/build.gradle.kts
@@ -64,6 +68,44 @@ jobs:
             sed -i 's/compileOptions {/compileOptions {\n        coreLibraryDesugaringEnabled true/g' android/app/build.gradle
             echo 'dependencies { coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.0.4" }' >> android/app/build.gradle
           fi
+
+          if [ -f "android/build.gradle.kts" ]; then
+            cat << 'EOF' >> android/build.gradle.kts
+
+          subprojects {
+              afterEvaluate {
+                  if (project.hasProperty("android")) {
+                      val androidExt = project.extensions.findByName("android")
+                      if (androidExt != null) {
+                          try {
+                              val m = androidExt.javaClass.getMethod("setCompileSdkVersion", Int::class.javaPrimitiveType)
+                              m.invoke(androidExt, 36)
+                          } catch (_: Throwable) {
+                              try {
+                                  val m = androidExt.javaClass.getMethod("setCompileSdk", java.lang.Integer::class.java)
+                                  m.invoke(androidExt, 36)
+                              } catch (_: Throwable) {}
+                          }
+                      }
+                  }
+              }
+          }
+          EOF
+          elif [ -f "android/build.gradle" ]; then
+            cat << 'EOF' >> android/build.gradle
+
+          subprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      project.android {
+                          compileSdkVersion 36
+                      }
+                  }
+              }
+          }
+          EOF
+          fi
+
           echo "=== ANDROID APP BUILD GRADLE ==="
           cat android/app/build.gradle* || true
           echo "================================="
