@@ -1,6 +1,6 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
-import 'package:perfect_volume_control/perfect_volume_control.dart';
+import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import '../core/constants/app_constants.dart';
 
 class AlarmAudioService {
@@ -32,9 +32,9 @@ class AlarmAudioService {
   /// Bypasses silent mode by saving current volume and setting device volume to 100%
   Future<void> maximizeVolume() async {
     try {
-      PerfectVolumeControl.hideUI = true;
-      _originalVolume ??= await PerfectVolumeControl.getVolume();
-      await PerfectVolumeControl.setVolume(1.0);
+      await FlutterVolumeController.updateShowSystemUI(false);
+      _originalVolume ??= await FlutterVolumeController.getVolume();
+      await FlutterVolumeController.setVolume(1.0);
     } catch (e) {
       debugPrint('Error setting volume to max: $e');
     }
@@ -44,7 +44,7 @@ class AlarmAudioService {
   Future<void> restoreVolume() async {
     try {
       if (_originalVolume != null) {
-        await PerfectVolumeControl.setVolume(_originalVolume!);
+        await FlutterVolumeController.setVolume(_originalVolume!);
         _originalVolume = null;
       }
     } catch (e) {
