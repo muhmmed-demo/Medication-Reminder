@@ -29,6 +29,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
+    <!-- Elderly Accessibility: Camera for pill photos & Volume control for silent mode bypass -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
     <application
         android:label="منبه الدواء"
         android:name="${applicationName}"

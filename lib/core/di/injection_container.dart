@@ -16,6 +16,7 @@ import '../../services/alarm_audio_service.dart';
 import '../../services/vibration_service.dart';
 import '../../services/permission_service.dart';
 import '../../services/alarm_scheduler_service.dart';
+import '../../services/tts_service.dart';
 import '../../presentation/screens/medications_screen/bloc/medications_bloc.dart';
 import '../../presentation/screens/add_medication_screen/bloc/add_medication_bloc.dart';
 import '../../presentation/screens/dose_log_screen/bloc/dose_log_bloc.dart';
@@ -54,6 +55,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => AlarmAudioService());
   sl.registerLazySingleton(() => VibrationService());
   sl.registerLazySingleton(() => PermissionService());
+  sl.registerLazySingleton(() => TtsService());
   sl.registerLazySingleton(
     () => AlarmSchedulerService(
       medicationRepository: sl<MedicationRepository>(),
@@ -94,6 +96,7 @@ Future<void> initDependencies() async {
       vibrationService: sl<VibrationService>(),
       notificationService: sl<NotificationService>(),
       alarmSchedulerService: sl<AlarmSchedulerService>(),
+      ttsService: sl<TtsService>(),
     ),
   );
 }

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../domain/entities/medication.dart';
 import '../../domain/entities/dose_schedule.dart';
@@ -17,6 +18,9 @@ class MedicationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasImage = medication.imagePath != null &&
+        medication.imagePath!.isNotEmpty &&
+        File(medication.imagePath!).existsSync();
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -27,18 +31,29 @@ class MedicationCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withAlpha(30),
+                if (hasImage)
+                  ClipRRect(
                     borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      File(medication.imagePath!),
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withAlpha(30),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.medication_rounded,
+                      color: theme.colorScheme.primary,
+                      size: 28,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.medication_rounded,
-                    color: theme.colorScheme.primary,
-                    size: 28,
-                  ),
-                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(

@@ -18,6 +18,7 @@ class AlarmRinging extends AlarmState {
   final int snoozeCount;
   final int maxSnoozeCount;
   final bool canSnooze;
+  final String? imagePath;
 
   const AlarmRinging({
     required this.medicationId,
@@ -28,6 +29,7 @@ class AlarmRinging extends AlarmState {
     required this.snoozeCount,
     required this.maxSnoozeCount,
     required this.canSnooze,
+    this.imagePath,
   });
 
   @override
@@ -40,6 +42,7 @@ class AlarmRinging extends AlarmState {
         snoozeCount,
         maxSnoozeCount,
         canSnooze,
+        imagePath,
       ];
 }
 

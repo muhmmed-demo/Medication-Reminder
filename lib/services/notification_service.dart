@@ -99,6 +99,7 @@ class NotificationService {
     required int doseScheduleId,
     int snoozeCount = 0,
     bool useCustomSound = true,
+    String? imagePath,
   }) async {
     final channelId = useCustomSound
         ? NotificationConstants.alarmChannelId
@@ -135,6 +136,7 @@ class NotificationService {
       'scheduledDateTime': scheduledDateTime.toIso8601String(),
       'snoozeCount': snoozeCount,
       'useCustomSound': useCustomSound,
+      'imagePath': imagePath,
     };
 
     var tzDateTime = tz.TZDateTime.from(scheduledDateTime, tz.local);

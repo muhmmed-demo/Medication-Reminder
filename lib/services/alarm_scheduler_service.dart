@@ -58,6 +58,7 @@ class AlarmSchedulerService {
           scheduledDateTime: nextDoseTime,
           medicationId: med.id ?? 0,
           doseScheduleId: schedule.id ?? 0,
+          imagePath: med.imagePath,
         );
       }
     } catch (e) {

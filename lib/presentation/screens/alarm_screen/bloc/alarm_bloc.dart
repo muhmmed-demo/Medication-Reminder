@@ -6,6 +6,7 @@ import '../../../../services/alarm_audio_service.dart';
 import '../../../../services/vibration_service.dart';
 import '../../../../services/notification_service.dart';
 import '../../../../services/alarm_scheduler_service.dart';
+import '../../../../services/tts_service.dart';
 import 'alarm_event.dart';
 import 'alarm_state.dart';
 
@@ -16,6 +17,7 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
   final VibrationService vibrationService;
   final NotificationService notificationService;
   final AlarmSchedulerService alarmSchedulerService;
+  final TtsService ttsService;
 
   AlarmBloc({
     required this.markDoseTakenUseCase,
@@ -24,6 +26,7 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
     required this.vibrationService,
     required this.notificationService,
     required this.alarmSchedulerService,
+    required this.ttsService,
   }) : super(AlarmInitial()) {
     on<StartAlarmEvent>(_onStartAlarm);
     on<TakeMedicationEvent>(_onTakeMedication);
@@ -36,6 +39,16 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
   ) async {
     final canSnooze = event.snoozeCount < AppConstants.maxSnoozeCount;
 
+    // 1. Maximize volume and start alarm audio & vibration
+    await alarmAudioService.startAlarmSound(useCustomSound: event.useCustomSound);
+    await vibrationService.startAlarmVibration();
+
+    // 2. Speak medication name and dose in Arabic for elderly / vision-impaired users
+    await ttsService.speakMedicationAlarm(
+      medicationName: event.medicationName,
+      dosageDescription: event.dosageDescription,
+    );
+
     emit(AlarmRinging(
       medicationId: event.medicationId,
       doseScheduleId: event.doseScheduleId,
@@ -45,6 +58,7 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
       snoozeCount: event.snoozeCount,
       maxSnoozeCount: AppConstants.maxSnoozeCount,
       canSnooze: canSnooze,
+      imagePath: event.imagePath,
     ));
   }
 
@@ -55,7 +69,12 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
     if (state is! AlarmRinging) return;
     final ringingState = state as AlarmRinging;
 
-    // Cancel notification which natively stops the sound/vibration
+    // Stop sound, vibration, and TTS, restoring volume to original level
+    await alarmAudioService.stopAlarmSound();
+    await vibrationService.stopVibration();
+    await ttsService.stop();
+
+    // Cancel notification which natively stops any foreground service/sound
     final notifId = ringingState.doseScheduleId;
     await notificationService.cancelAlarm(notifId);
 
@@ -81,6 +100,11 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
 
     if (!ringingState.canSnooze) return;
 
+    // Stop sound, vibration, and TTS, restoring volume to original level
+    await alarmAudioService.stopAlarmSound();
+    await vibrationService.stopVibration();
+    await ttsService.stop();
+
     // Cancel current notification to stop sound
     final notifId = ringingState.doseScheduleId;
     await notificationService.cancelAlarm(notifId);
@@ -97,7 +121,7 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
       newSnoozeCount: nextSnoozeCount,
     );
 
-    // Schedule next snooze alarm
+    // Schedule next snooze alarm with imagePath preserved
     await notificationService.scheduleAlarm(
       id: notifId,
       medicationName: ringingState.medicationName,
@@ -106,6 +130,7 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
       medicationId: ringingState.medicationId,
       doseScheduleId: ringingState.doseScheduleId,
       snoozeCount: nextSnoozeCount,
+      imagePath: ringingState.imagePath,
     );
 
     // Also ensure all other alarms are properly scheduled just in case
@@ -118,6 +143,9 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
 
   @override
   Future<void> close() async {
+    await alarmAudioService.stopAlarmSound();
+    await vibrationService.stopVibration();
+    await ttsService.stop();
     return super.close();
   }
 }

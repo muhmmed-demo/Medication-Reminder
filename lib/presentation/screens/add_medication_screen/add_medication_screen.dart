@@ -1,5 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import '../../../../domain/entities/medication.dart';
 import '../../../../domain/entities/dose_schedule.dart';
 import '../../../../domain/enums/repeat_type.dart';
@@ -31,6 +35,31 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
   String _mealTiming = 'none'; // 'none', 'before', 'after', 'with'
   RepeatType _repeatType = RepeatType.daily;
   final List<int> _selectedDays = [1, 2, 3, 4, 5, 6, 7];
+
+  // Phase 2: Pill / Box image for elderly visual identification
+  String? _imagePath;
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (picked != null) {
+        final appDir = await getApplicationDocumentsDirectory();
+        final fileName = 'med_${DateTime.now().millisecondsSinceEpoch}${p.extension(picked.path)}';
+        final saved = await File(picked.path).copy('${appDir.path}/$fileName');
+        setState(() {
+          _imagePath = saved.path;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -125,6 +154,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
         inventoryCount: inventory,
         refillThreshold: inventory != null ? 3 : null,
         mealTiming: _mealTiming == 'none' ? null : _mealTiming,
+        imagePath: _imagePath,
       );
 
       final schedules = _scheduleTimes.map((t) {
@@ -199,6 +229,83 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
                   validator: (v) =>
                       v == null || v.trim().isEmpty ? 'الرجاء إدخال وصف الجرعة' : null,
                 ),
+                const SizedBox(height: 20),
+
+                // Phase 2: Medication / Box Picture for Elderly
+                Text(
+                  'صورة علبة الدواء أو الحبة 📸 (مخصص لكبار السن)',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (_imagePath != null)
+                  Stack(
+                    alignment: Alignment.topRight,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.file(
+                          File(_imagePath!),
+                          height: 180,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: CircleAvatar(
+                          backgroundColor: Colors.black.withAlpha(160),
+                          child: IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                            tooltip: 'حذف الصورة',
+                            onPressed: () => setState(() => _imagePath = null),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceVariant.withAlpha(60),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'تساعد الصورة كبار السن على التعرف على الدواء الصحيح فوراً وقت الرنين',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 13, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.camera_alt_rounded),
+                                label: const Text('تصوير بالكاميرا'),
+                                onPressed: () => _pickImage(ImageSource.camera),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.photo_library_rounded),
+                                label: const Text('من المعرض'),
+                                onPressed: () => _pickImage(ImageSource.gallery),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
                 const SizedBox(height: 24),
                 Text(
                   'عدد مرات الاستخدام يومياً',

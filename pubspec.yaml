@@ -30,9 +30,14 @@ dependencies:
   equatable: ^2.0.7
   get_it: ^8.0.3
 
-  # Audio Alarm & Vibration
+  # Audio Alarm, Volume & Vibration
   audioplayers: ^6.1.1
   vibration: ^3.1.2
+  flutter_tts: ^4.2.2
+  perfect_volume_control: ^0.2.0
+
+  # Camera & Images (Pill Identification)
+  image_picker: ^1.1.2
 
   # Date, Time & Timezones
   intl: ^0.20.3

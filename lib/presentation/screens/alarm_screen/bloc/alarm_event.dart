@@ -15,6 +15,7 @@ class StartAlarmEvent extends AlarmEvent {
   final DateTime scheduledDateTime;
   final int snoozeCount;
   final bool useCustomSound;
+  final String? imagePath;
 
   const StartAlarmEvent({
     required this.medicationId,
@@ -24,6 +25,7 @@ class StartAlarmEvent extends AlarmEvent {
     required this.scheduledDateTime,
     this.snoozeCount = 0,
     this.useCustomSound = true,
+    this.imagePath,
   });
 
   @override
@@ -35,6 +37,7 @@ class StartAlarmEvent extends AlarmEvent {
         scheduledDateTime,
         snoozeCount,
         useCustomSound,
+        imagePath,
       ];
 }
 
