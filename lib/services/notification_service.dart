@@ -22,7 +22,7 @@ class NotificationService {
     onAlarmTriggered = onNotificationTapped;
 
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('ic_notification');
 
     const InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
@@ -43,6 +43,17 @@ class NotificationService {
     );
 
     await _createNotificationChannels();
+  }
+
+  Future<bool?> requestPermissions() async {
+    final android = _notificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    if (android != null) {
+      final notif = await android.requestNotificationsPermission();
+      await android.requestExactAlarmsPermission();
+      return notif;
+    }
+    return true;
   }
 
   Future<NotificationAppLaunchDetails?> getNotificationAppLaunchDetails() async {
@@ -109,6 +120,7 @@ class NotificationService {
       autoCancel: false,
       playSound: true,
       enableVibration: true,
+      icon: 'ic_notification',
       additionalFlags: Int32List.fromList(<int>[4]), // FLAG_INSISTENT
     );
 
@@ -125,15 +137,12 @@ class NotificationService {
       'useCustomSound': useCustomSound,
     };
 
-    final utcTime = scheduledDateTime.toUtc();
-    final tzDateTime = tz.TZDateTime.utc(
-      utcTime.year,
-      utcTime.month,
-      utcTime.day,
-      utcTime.hour,
-      utcTime.minute,
-      utcTime.second,
-    );
+    var tzDateTime = tz.TZDateTime.from(scheduledDateTime, tz.local);
+    final tzNow = tz.TZDateTime.now(tz.local);
+    // If the scheduled time is slightly in the past (e.g. testing right now), trigger in 5 seconds
+    if (tzDateTime.isBefore(tzNow)) {
+      tzDateTime = tzNow.add(const Duration(seconds: 5));
+    }
 
     try {
       await _notificationsPlugin.zonedSchedule(
@@ -164,6 +173,26 @@ class NotificationService {
     }
   }
 
+  Future<void> showTestNotification() async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      NotificationConstants.alarmChannelId,
+      NotificationConstants.alarmChannelName,
+      channelDescription: NotificationConstants.alarmChannelDescription,
+      importance: Importance.max,
+      priority: Priority.high,
+      icon: 'ic_notification',
+    );
+    const NotificationDetails notificationDetails =
+        NotificationDetails(android: androidDetails);
+
+    await _notificationsPlugin.show(
+      99999,
+      '🔔 تجربة المنبه بنجاح!',
+      'نظام الإشعارات يعمل بكفاءة على جهازك والمنبهات جاهزة للعمل.',
+      notificationDetails,
+    );
+  }
+
   Future<void> showWarningNotification({
     required int id,
     required String title,
@@ -175,7 +204,7 @@ class NotificationService {
       channelDescription: NotificationConstants.systemSoundChannelDescription,
       importance: Importance.high,
       priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
+      icon: 'ic_notification',
     );
     const NotificationDetails notificationDetails =
         NotificationDetails(android: androidDetails);

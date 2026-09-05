@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'core/di/injection_container.dart';
 import 'core/router/app_router.dart';
 import 'services/notification_service.dart';
@@ -14,6 +16,12 @@ void main() async {
 
   // 1. Initialize Timezones for accurate zoned alarms
   tz.initializeTimeZones();
+  try {
+    final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(timeZoneName));
+  } catch (e) {
+    debugPrint('Could not configure local timezone: $e');
+  }
 
   // 2. Initialize Dependency Injection Container
   await initDependencies();

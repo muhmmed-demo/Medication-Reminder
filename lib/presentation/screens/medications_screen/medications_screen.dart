@@ -7,6 +7,7 @@ import 'bloc/medications_state.dart';
 
 import '../../../core/di/injection_container.dart';
 import '../../../services/permission_service.dart';
+import '../../../services/notification_service.dart';
 
 class MedicationsScreen extends StatefulWidget {
   const MedicationsScreen({super.key});
@@ -22,8 +23,9 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
     context.read<MedicationsBloc>().add(LoadMedicationsEvent());
     
     // Request permissions when the app starts
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      sl<PermissionService>().requestAllAlarmPermissions();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await sl<NotificationService>().requestPermissions();
+      await sl<PermissionService>().requestAllAlarmPermissions();
     });
   }
 
@@ -35,6 +37,18 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
       appBar: AppBar(
         title: const Text('أدويتي 💊'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_active_outlined),
+            tooltip: 'تجربة الإشعار',
+            onPressed: () async {
+              await sl<NotificationService>().showTestNotification();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('تم إرسال إشعار تجريبي 🔔')),
+                );
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.history_rounded),
             tooltip: 'سجل الجرعات',

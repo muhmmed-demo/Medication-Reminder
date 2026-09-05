@@ -37,6 +37,7 @@ dependencies:
   # Date, Time & Timezones
   intl: ^0.20.3
   timezone: ^0.9.4
+  flutter_timezone: ^5.1.0
 
   # Device detection for OEM battery optimization guidance
   device_info_plus: ^11.1.3
