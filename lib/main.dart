@@ -19,8 +19,8 @@ void main() async {
   // 1. Initialize Timezones for accurate zoned alarms
   tz.initializeTimeZones();
   try {
-    final String timeZoneName = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(timeZoneName));
+    final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
   } catch (e) {
     debugPrint('Could not configure local timezone: $e');
   }
