@@ -6,3 +6,5 @@ export 'mark_dose_taken_usecase.dart';
 export 'snooze_dose_usecase.dart';
 export 'skip_dose_usecase.dart';
 export 'get_dose_logs_usecase.dart';
+export 'update_medication_usecase.dart';
+export 'record_prn_dose_usecase.dart';

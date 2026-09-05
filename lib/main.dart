@@ -9,6 +9,8 @@ import 'services/notification_service.dart';
 import 'services/alarm_audio_service.dart';
 import 'services/permission_service.dart';
 import 'services/alarm_scheduler_service.dart';
+import 'domain/usecases/mark_dose_taken_usecase.dart';
+import 'domain/usecases/snooze_dose_usecase.dart';
 import 'app.dart';
 
 void main() async {
@@ -35,8 +37,61 @@ void main() async {
   await alarmAudioService.initialize();
 
   await notificationService.initialize(
-    onNotificationTapped: (payload) {
-      // Navigate directly to Alarm ringing screen when notification or full-screen intent triggers
+    onNotificationTapped: (payload) async {
+      final actionId = payload['actionId'] as String?;
+      if (actionId == 'action_take') {
+        final doseScheduleId = payload['doseScheduleId'] as int?;
+        final scheduledStr = payload['scheduledDateTime'] as String?;
+        if (doseScheduleId != null && scheduledStr != null) {
+          final scheduledDate = DateTime.tryParse(scheduledStr) ?? DateTime.now();
+          await sl<MarkDoseTakenUseCase>()(
+            doseScheduleId: doseScheduleId,
+            scheduledDateTime: scheduledDate,
+          );
+          final rawExtras = payload['extraMedications'];
+          if (rawExtras is List) {
+            for (final extra in rawExtras) {
+              final extraScheduleId = (extra as Map)['doseScheduleId'] as int?;
+              if (extraScheduleId != null) {
+                await sl<MarkDoseTakenUseCase>()(
+                  doseScheduleId: extraScheduleId,
+                  scheduledDateTime: scheduledDate,
+                );
+              }
+            }
+          }
+          await notificationService.cancelAlarm(doseScheduleId);
+          await alarmSchedulerService.scheduleAllActiveAlarms();
+          return;
+        }
+      } else if (actionId == 'action_snooze') {
+        final doseScheduleId = payload['doseScheduleId'] as int?;
+        final scheduledStr = payload['scheduledDateTime'] as String?;
+        final snoozeCount = (payload['snoozeCount'] as int? ?? 0) + 1;
+        if (doseScheduleId != null && scheduledStr != null) {
+          final scheduledDate = DateTime.tryParse(scheduledStr) ?? DateTime.now();
+          await sl<SnoozeDoseUseCase>()(
+            doseScheduleId: doseScheduleId,
+            scheduledDateTime: scheduledDate,
+            newSnoozeCount: snoozeCount,
+          );
+          await notificationService.cancelAlarm(doseScheduleId);
+          final nextTime = DateTime.now().add(const Duration(minutes: 10));
+          await notificationService.scheduleAlarm(
+            id: doseScheduleId,
+            medicationName: payload['medicationName'] as String? ?? '',
+            dosageDescription: payload['dosageDescription'] as String? ?? '',
+            scheduledDateTime: nextTime,
+            medicationId: payload['medicationId'] as int? ?? 0,
+            doseScheduleId: doseScheduleId,
+            snoozeCount: snoozeCount,
+            imagePath: payload['imagePath'] as String?,
+          );
+          return;
+        }
+      }
+
+      // Default: Navigate directly to Alarm ringing screen when notification or full-screen intent triggers
       rootNavigatorKey.currentState?.pushNamed(
         AppRouter.alarm,
         arguments: payload,

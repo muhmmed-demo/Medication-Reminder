@@ -34,6 +34,9 @@ class NotificationService {
         if (response.payload != null && response.payload!.isNotEmpty) {
           try {
             final data = jsonDecode(response.payload!) as Map<String, dynamic>;
+            if (response.actionId != null) {
+              data['actionId'] = response.actionId;
+            }
             onAlarmTriggered?.call(data);
           } catch (e) {
             debugPrint('Error parsing notification payload: $e');
@@ -125,6 +128,18 @@ class NotificationService {
       enableVibration: true,
       icon: 'ic_notification',
       additionalFlags: Int32List.fromList(<int>[4]), // FLAG_INSISTENT
+      actions: const <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          'action_take',
+          'تم الأخذ ✅',
+          showsUserInterface: true,
+        ),
+        AndroidNotificationAction(
+          'action_snooze',
+          'تأجيل 10د ⏰',
+          showsUserInterface: true,
+        ),
+      ],
     );
 
     final NotificationDetails notificationDetails =

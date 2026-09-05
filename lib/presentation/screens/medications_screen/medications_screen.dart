@@ -215,6 +215,21 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
                       return MedicationCard(
                         medication: med,
                         schedules: schedules,
+                        onToggleActive: () {
+                          context.read<MedicationsBloc>().add(ToggleMedicationActiveEvent(med));
+                        },
+                        onTakePrnDose: () {
+                          if (med.id != null) {
+                            context.read<MedicationsBloc>().add(RecordPrnDoseEvent(med.id!));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('تم تسجيل أخذ جرعة من "${med.name}" بنجاح ✅'),
+                                backgroundColor: const Color(0xFF10B981),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
                         onDelete: () {
                           showDialog(
                             context: context,

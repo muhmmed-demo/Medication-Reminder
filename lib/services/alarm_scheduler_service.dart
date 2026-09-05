@@ -48,7 +48,12 @@ class AlarmSchedulerService {
           if (endOfDay.isBefore(now)) continue;
         }
 
-        final nextDoseTime = _calculateNextDoseDateTime(schedule, now);
+        // If medication start date is in the future, calculate from start date
+        final baseDate = med.startDate.isAfter(now)
+            ? DateTime(med.startDate.year, med.startDate.month, med.startDate.day, 0, 0, 0)
+            : now;
+
+        final nextDoseTime = _calculateNextDoseDateTime(schedule, baseDate);
 
         // Do not schedule if next dose falls after the medication end date
         if (endOfDay != null && nextDoseTime.isAfter(endOfDay)) continue;

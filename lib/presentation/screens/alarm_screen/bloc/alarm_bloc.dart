@@ -63,12 +63,16 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
           'تنبيه. حان موعد أخذ دواء ${event.medicationName}. الجرعة المطلوبة: ${event.dosageDescription}.';
     }
 
-    // Speak asynchronously and unduck volume when speech finishes
-    ttsService.speak(speechText).then((_) async {
-      await alarmAudioService.unduckVolume();
-    }).catchError((_) async {
-      await alarmAudioService.unduckVolume();
-    });
+    // Speak asynchronously with an 8-second safety timeout, guaranteeing volume restoration
+    ttsService
+        .speak(speechText)
+        .timeout(
+          const Duration(seconds: 8),
+          onTimeout: () {},
+        )
+        .whenComplete(() async {
+          await alarmAudioService.unduckVolume();
+        });
 
     emit(AlarmRinging(
       medicationId: event.medicationId,

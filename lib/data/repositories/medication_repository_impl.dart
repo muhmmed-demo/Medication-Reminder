@@ -58,6 +58,13 @@ class MedicationRepositoryImpl implements MedicationRepository {
   }
 
   @override
+  Future<int> insertSchedule(DoseSchedule schedule) async {
+    return await database.doseScheduleDao.insertSchedule(
+      DoseScheduleModel.toCompanion(schedule),
+    );
+  }
+
+  @override
   Future<List<DoseSchedule>> getSchedulesForMedication(int medicationId) async {
     final list = await database.doseScheduleDao.getSchedulesForMedication(medicationId);
     return list.map(DoseScheduleModel.fromData).toList();

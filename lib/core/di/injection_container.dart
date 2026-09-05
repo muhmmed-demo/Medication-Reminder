@@ -12,6 +12,8 @@ import '../../domain/usecases/mark_dose_taken_usecase.dart';
 import '../../domain/usecases/snooze_dose_usecase.dart';
 import '../../domain/usecases/skip_dose_usecase.dart';
 import '../../domain/usecases/get_dose_logs_usecase.dart';
+import '../../domain/usecases/update_medication_usecase.dart';
+import '../../domain/usecases/record_prn_dose_usecase.dart';
 import '../../services/notification_service.dart';
 import '../../services/alarm_audio_service.dart';
 import '../../services/vibration_service.dart';
@@ -51,6 +53,11 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => SnoozeDoseUseCase(sl<DoseLogRepository>()));
   sl.registerLazySingleton(() => SkipDoseUseCase(sl<DoseLogRepository>()));
   sl.registerLazySingleton(() => GetDoseLogsUseCase(sl<DoseLogRepository>()));
+  sl.registerLazySingleton(() => UpdateMedicationUseCase(sl<MedicationRepository>()));
+  sl.registerLazySingleton(() => RecordPrnDoseUseCase(
+    doseLogRepository: sl<DoseLogRepository>(),
+    medicationRepository: sl<MedicationRepository>(),
+  ));
 
   // 4. Services
   sl.registerLazySingleton(() => NotificationService());
@@ -72,6 +79,8 @@ Future<void> initDependencies() async {
       deleteMedicationUseCase: sl<DeleteMedicationUseCase>(),
       scheduleDoseUseCase: sl<ScheduleDoseUseCase>(),
       alarmSchedulerService: sl<AlarmSchedulerService>(),
+      updateMedicationUseCase: sl<UpdateMedicationUseCase>(),
+      recordPrnDoseUseCase: sl<RecordPrnDoseUseCase>(),
     ),
   );
 

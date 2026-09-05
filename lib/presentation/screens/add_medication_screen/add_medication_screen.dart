@@ -32,6 +32,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
   
   // Phase 1 advanced options
   bool _trackInventory = false;
+  bool _isPRN = false;
   String _mealTiming = 'none'; // 'none', 'before', 'after', 'with'
   RepeatType _repeatType = RepeatType.daily;
   final List<int> _selectedDays = [1, 2, 3, 4, 5, 6, 7];
@@ -120,24 +121,26 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
 
   void _onSave() {
     if (_formKey.currentState?.validate() ?? false) {
-      if (!_isContinuous && _endDate == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('الرجاء تحديد تاريخ انتهاء العلاج'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
+      if (!_isPRN) {
+        if (!_isContinuous && _endDate == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('الرجاء تحديد تاريخ انتهاء العلاج'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          return;
+        }
 
-      if (_repeatType == RepeatType.specificDays && _selectedDays.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('الرجاء اختيار يوم واحد على الأقل في الأسبوع'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
+        if (_repeatType == RepeatType.specificDays && _selectedDays.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('الرجاء اختيار يوم واحد على الأقل في الأسبوع'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          return;
+        }
       }
 
       final now = DateTime.now();
@@ -146,25 +149,35 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
       final med = Medication(
         name: _nameController.text.trim(),
         dosageDescription: _dosageController.text.trim(),
-        timesPerDay: _timesPerDay,
+        timesPerDay: _isPRN ? 0 : _timesPerDay,
         startDate: now,
-        endDate: _isContinuous ? null : _endDate,
+        endDate: (_isPRN || _isContinuous) ? null : _endDate,
         notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
         createdAt: now,
         inventoryCount: inventory,
         refillThreshold: inventory != null ? 3 : null,
         mealTiming: _mealTiming == 'none' ? null : _mealTiming,
         imagePath: _imagePath,
+        isPRN: _isPRN,
       );
 
-      final schedules = _scheduleTimes.map((t) {
-        return DoseSchedule(
-          medicationId: 0, // Assigned by repository
-          scheduledTime: _formatTimeOfDay(t),
-          repeatType: _repeatType,
-          repeatDays: _repeatType == RepeatType.specificDays ? List.from(_selectedDays) : null,
-        );
-      }).toList();
+      final schedules = _isPRN
+          ? [
+              DoseSchedule(
+                medicationId: 0,
+                scheduledTime: 'عند اللزوم',
+                repeatType: RepeatType.daily,
+                isActive: false,
+              ),
+            ]
+          : _scheduleTimes.map((t) {
+              return DoseSchedule(
+                medicationId: 0, // Assigned by repository
+                scheduledTime: _formatTimeOfDay(t),
+                repeatType: _repeatType,
+                repeatDays: _repeatType == RepeatType.specificDays ? List.from(_selectedDays) : null,
+              );
+            }).toList();
 
       context.read<AddMedicationBloc>().add(
             SaveMedicationEvent(medication: med, schedules: schedules),
@@ -308,168 +321,238 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
 
                 const SizedBox(height: 24),
                 Text(
-                  'عدد مرات الاستخدام يومياً',
+                  'طبيعة استخدام الدواء',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [1, 2, 3, 4].map((count) {
-                    final isSelected = _timesPerDay == count;
-                    return Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: ChoiceChip(
-                          label: Center(
-                            child: Text(
-                              '$count مرة',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: isSelected ? Colors.white : null,
-                              ),
-                            ),
-                          ),
-                          selected: isSelected,
-                          selectedColor: theme.colorScheme.primary,
-                          onSelected: (selected) {
-                            if (selected) _updateTimesPerDay(count);
-                          },
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'مواعيد التنبيه (انقر لتعديل أي وقت)',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: List.generate(_scheduleTimes.length, (i) {
-                    final time = _scheduleTimes[i];
-                    return ActionChip(
-                      avatar: const Icon(Icons.access_alarm_rounded, size: 18),
-                      label: Text(
-                        'الجرعة ${i + 1}: ${_formatTimeOfDay(time)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      onPressed: () => _pickTime(i),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'مدة العلاج',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                SwitchListTile(
-                  title: const Text('علاج مستمر (بدون نهاية)'),
-                  value: _isContinuous,
-                  onChanged: (val) {
-                    setState(() {
-                      _isContinuous = val;
-                      if (!val && _endDate == null) {
-                        _endDate = DateTime.now().add(const Duration(days: 7));
-                      }
-                    });
-                  },
-                ),
-                if (!_isContinuous) ...[
-                  ListTile(
-                    title: const Text('تاريخ انتهاء العلاج:'),
-                    subtitle: Text(_endDate != null
-                        ? '${_endDate!.year}/${_endDate!.month}/${_endDate!.day}'
-                        : 'اختر تاريخاً'),
-                    trailing: const Icon(Icons.calendar_month_rounded),
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: _endDate ?? DateTime.now().add(const Duration(days: 7)),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-                      );
-                      if (picked != null) {
-                        setState(() => _endDate = picked);
-                      }
-                    },
-                  ),
-                ],
-                const SizedBox(height: 24),
-                Text(
-                  'التكرار وأيام الجرعات',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(
                       child: ChoiceChip(
-                        label: const Center(child: Text('يومياً')),
-                        selected: _repeatType == RepeatType.daily,
+                        label: const Center(
+                          child: Text(
+                            'مجدول بأوقات ⏰',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        selected: !_isPRN,
                         selectedColor: theme.colorScheme.primary,
                         onSelected: (val) {
-                          if (val) setState(() => _repeatType = RepeatType.daily);
+                          if (val) setState(() => _isPRN = false);
                         },
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: ChoiceChip(
-                        label: const Center(child: Text('أيام محددة')),
-                        selected: _repeatType == RepeatType.specificDays,
-                        selectedColor: theme.colorScheme.primary,
+                        label: const Center(
+                          child: Text(
+                            'عند اللزوم / مسكن 💊',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        selected: _isPRN,
+                        selectedColor: Colors.purple,
                         onSelected: (val) {
-                          if (val) setState(() => _repeatType = RepeatType.specificDays);
+                          if (val) setState(() => _isPRN = true);
                         },
                       ),
                     ),
                   ],
                 ),
-                if (_repeatType == RepeatType.specificDays) ...[
+
+                if (_isPRN) ...[
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(top: 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.purple.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline_rounded, color: Colors.purple, size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'أدوية "عند اللزوم" لا ترن في أوقات ثابتة. ستتمكن من تسجيل أخذ الجرعة بضغطة زر واحدة من الصفحة الرئيسية وتتبع المخزون بسهولة.',
+                            style: TextStyle(fontSize: 13, color: Colors.purple.shade900),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 24),
+                  Text(
+                    'عدد مرات الاستخدام يومياً',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      {'name': 'السبت', 'day': 6},
-                      {'name': 'الأحد', 'day': 7},
-                      {'name': 'الإثنين', 'day': 1},
-                      {'name': 'الثلاثاء', 'day': 2},
-                      {'name': 'الأربعاء', 'day': 3},
-                      {'name': 'الخميس', 'day': 4},
-                      {'name': 'الجمعة', 'day': 5},
-                    ].map((d) {
-                      final dayNum = d['day'] as int;
-                      final isSelected = _selectedDays.contains(dayNum);
-                      return FilterChip(
-                        label: Text(d['name'] as String),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _selectedDays.add(dayNum);
-                            } else {
-                              _selectedDays.remove(dayNum);
-                            }
-                          });
-                        },
+                  Row(
+                    children: [1, 2, 3, 4].map((count) {
+                      final isSelected = _timesPerDay == count;
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: ChoiceChip(
+                            label: Center(
+                              child: Text(
+                                '$count مرة',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? Colors.white : null,
+                                ),
+                              ),
+                            ),
+                            selected: isSelected,
+                            selectedColor: theme.colorScheme.primary,
+                            onSelected: (selected) {
+                              if (selected) _updateTimesPerDay(count);
+                            },
+                          ),
+                        ),
                       );
                     }).toList(),
                   ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'مواعيد التنبيه (انقر لتعديل أي وقت)',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: List.generate(_scheduleTimes.length, (i) {
+                      final time = _scheduleTimes[i];
+                      return ActionChip(
+                        avatar: const Icon(Icons.access_alarm_rounded, size: 18),
+                        label: Text(
+                          'الجرعة ${i + 1}: ${_formatTimeOfDay(time)}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: () => _pickTime(i),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'مدة العلاج',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  SwitchListTile(
+                    title: const Text('علاج مستمر (بدون نهاية)'),
+                    value: _isContinuous,
+                    onChanged: (val) {
+                      setState(() {
+                        _isContinuous = val;
+                        if (!val && _endDate == null) {
+                          _endDate = DateTime.now().add(const Duration(days: 7));
+                        }
+                      });
+                    },
+                  ),
+                  if (!_isContinuous) ...[
+                    ListTile(
+                      title: const Text('تاريخ انتهاء العلاج:'),
+                      subtitle: Text(_endDate != null
+                          ? '${_endDate!.year}/${_endDate!.month}/${_endDate!.day}'
+                          : 'اختر تاريخاً'),
+                      trailing: const Icon(Icons.calendar_month_rounded),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _endDate ?? DateTime.now().add(const Duration(days: 7)),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+                        );
+                        if (picked != null) {
+                          setState(() => _endDate = picked);
+                        }
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  Text(
+                    'التكرار وأيام الجرعات',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('يومياً')),
+                          selected: _repeatType == RepeatType.daily,
+                          selectedColor: theme.colorScheme.primary,
+                          onSelected: (val) {
+                            if (val) setState(() => _repeatType = RepeatType.daily);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('أيام محددة')),
+                          selected: _repeatType == RepeatType.specificDays,
+                          selectedColor: theme.colorScheme.primary,
+                          onSelected: (val) {
+                            if (val) setState(() => _repeatType = RepeatType.specificDays);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_repeatType == RepeatType.specificDays) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        {'name': 'السبت', 'day': 6},
+                        {'name': 'الأحد', 'day': 7},
+                        {'name': 'الإثنين', 'day': 1},
+                        {'name': 'الثلاثاء', 'day': 2},
+                        {'name': 'الأربعاء', 'day': 3},
+                        {'name': 'الخميس', 'day': 4},
+                        {'name': 'الجمعة', 'day': 5},
+                      ].map((d) {
+                        final dayNum = d['day'] as int;
+                        final isSelected = _selectedDays.contains(dayNum);
+                        return FilterChip(
+                          label: Text(d['name'] as String),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _selectedDays.add(dayNum);
+                              } else {
+                                _selectedDays.remove(dayNum);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ],
                 const SizedBox(height: 24),
                 Text(
