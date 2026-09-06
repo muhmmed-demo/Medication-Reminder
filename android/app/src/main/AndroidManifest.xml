@@ -28,6 +28,8 @@
     <!-- Foreground Service permissions for reliable alarms on Android 14 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- BUGFIX: مطلوب على Android 14+ لضمان عمل AlarmManager بدون فتح التطبيق -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_ALARM" />
 
     <!-- Elderly Accessibility: Camera for pill photos & Volume control for silent mode bypass -->
     <uses-permission android:name="android.permission.CAMERA" />

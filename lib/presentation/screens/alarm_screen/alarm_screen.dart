@@ -6,10 +6,58 @@ import 'bloc/alarm_bloc.dart';
 import 'bloc/alarm_event.dart';
 import 'bloc/alarm_state.dart';
 
-class AlarmScreen extends StatelessWidget {
+class AlarmScreen extends StatefulWidget {
   final Map<String, dynamic>? initialPayload;
 
   const AlarmScreen({super.key, this.initialPayload});
+
+  @override
+  State<AlarmScreen> createState() => _AlarmScreenState();
+}
+
+class _AlarmScreenState extends State<AlarmScreen> {
+  // BUGFIX: flag لضمان إرسال StartAlarmEvent مرة واحدة فقط
+  // السلوك السابق: addPostFrameCallback داخل builder كان يُرسل الحدث
+  // عند كل إعادة بناء → race condition → تجمد الشاشة
+  bool _alarmStarted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // نُؤجل الإرسال لما بعد اكتمال بناء الـ Widget
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return; // BUGFIX: تحقق من أن الـ Widget لا يزال حياً
+      if (_alarmStarted) return;
+      _alarmStarted = true;
+
+      if (widget.initialPayload != null) {
+        List<Map<String, dynamic>>? extraMeds;
+        final rawExtra = widget.initialPayload!['extraMedications'];
+        if (rawExtra is List) {
+          extraMeds = rawExtra
+              .map((item) => Map<String, dynamic>.from(item as Map))
+              .toList();
+        }
+
+        context.read<AlarmBloc>().add(
+              StartAlarmEvent(
+                medicationId: widget.initialPayload!['medicationId'] as int? ?? 0,
+                doseScheduleId: widget.initialPayload!['doseScheduleId'] as int? ?? 0,
+                medicationName: widget.initialPayload!['medicationName'] as String? ?? 'دواء',
+                dosageDescription:
+                    widget.initialPayload!['dosageDescription'] as String? ?? '',
+                scheduledDateTime: DateTime.tryParse(
+                        widget.initialPayload!['scheduledDateTime'] as String? ?? '') ??
+                    DateTime.now(),
+                snoozeCount: widget.initialPayload!['snoozeCount'] as int? ?? 0,
+                useCustomSound: widget.initialPayload!['useCustomSound'] as bool? ?? true,
+                imagePath: widget.initialPayload!['imagePath'] as String?,
+                extraMedications: extraMeds,
+              ),
+            );
+      }
+    });
+  }
 
   void _closeScreen(BuildContext context) {
     if (Navigator.of(context).canPop()) {
@@ -57,35 +105,22 @@ class AlarmScreen extends StatelessWidget {
           },
           builder: (context, state) {
             if (state is AlarmInitial) {
-              if (initialPayload != null) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  List<Map<String, dynamic>>? extraMeds;
-                  final rawExtra = initialPayload!['extraMedications'];
-                  if (rawExtra is List) {
-                    extraMeds = rawExtra
-                        .map((item) => Map<String, dynamic>.from(item as Map))
-                        .toList();
-                  }
-
-                  context.read<AlarmBloc>().add(
-                        StartAlarmEvent(
-                          medicationId: initialPayload!['medicationId'] as int? ?? 0,
-                          doseScheduleId: initialPayload!['doseScheduleId'] as int? ?? 0,
-                          medicationName: initialPayload!['medicationName'] as String? ?? 'دواء',
-                          dosageDescription: initialPayload!['dosageDescription'] as String? ?? '',
-                          scheduledDateTime: DateTime.tryParse(
-                                  initialPayload!['scheduledDateTime'] as String? ?? '') ??
-                              DateTime.now(),
-                          snoozeCount: initialPayload!['snoozeCount'] as int? ?? 0,
-                          useCustomSound: initialPayload!['useCustomSound'] as bool? ?? true,
-                          imagePath: initialPayload!['imagePath'] as String?,
-                          extraMedications: extraMeds,
-                        ),
-                      );
-                });
-              }
+              // BUGFIX: شاشة تحميل بخلفية ملونة بدلاً من شفافة/رمادية
+              // السلوك السابق: CircularProgressIndicator على خلفية شفافة = شاشة رمادية
               return const Center(
-                child: CircularProgressIndicator(color: Colors.white),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.alarm_on_rounded, size: 64, color: Color(0xFFEF4444)),
+                    SizedBox(height: 16),
+                    CircularProgressIndicator(color: Color(0xFFEF4444)),
+                    SizedBox(height: 16),
+                    Text(
+                      'جاري تحميل التنبيه...',
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
+                  ],
+                ),
               );
             }
 

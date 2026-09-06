@@ -48,12 +48,13 @@ class NotificationService {
     await _createNotificationChannels();
   }
 
+  // BUGFIX: إزالة requestExactAlarmsPermission() من هنا — تتم إدارة الأذونات
+  // بشكل مركزي في PermissionService فقط لتجنب التعارض والطلب المزدوج
   Future<bool?> requestPermissions() async {
     final android = _notificationsPlugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     if (android != null) {
       final notif = await android.requestNotificationsPermission();
-      await android.requestExactAlarmsPermission();
       return notif;
     }
     return true;
@@ -157,19 +158,31 @@ class NotificationService {
       'extraMedications': extraMedications,
     };
 
-    var tzDateTime = tz.TZDateTime.from(scheduledDateTime, tz.local);
-    final tzNow = tz.TZDateTime.now(tz.local);
-    // If the scheduled time is slightly in the past (e.g. testing right now), trigger in 5 seconds
-    if (tzDateTime.isBefore(tzNow)) {
-      tzDateTime = tzNow.add(const Duration(seconds: 5));
-    }
-
     final notifTitle = extraMedications != null && extraMedications.isNotEmpty
         ? '⏰ حان موعد أدويتك (${extraMedications.length + 1} أدوية)'
         : '⏰ حان موعد علاجك!';
     final notifBody = extraMedications != null && extraMedications.isNotEmpty
         ? '$medicationName + ${extraMedications.map((m) => m['medicationName']).join(' + ')}'
         : '$medicationName - $dosageDescription';
+
+    var tzDateTime = tz.TZDateTime.from(scheduledDateTime, tz.local);
+    final tzNow = tz.TZDateTime.now(tz.local);
+
+    // BUGFIX: سجّل الوقت المجدول للتشخيص
+    debugPrint(
+      '📅 scheduleAlarm: id=$id | scheduled=${tzDateTime.toIso8601String()} | now=${tzNow.toIso8601String()} | tz=${tz.local.name}',
+    );
+
+    // BUGFIX: إذا كان الوقت في الماضي، هذا خطأ في الحساب — لا نُجدوله بعد 5 ثوانٍ
+    // (السلوك السابق كان يُرنّ المنبه في وقت غير متوقع)
+    // نتجاهل الجدولة ونُسجّل تحذيراً واضحاً
+    if (tzDateTime.isBefore(tzNow)) {
+      debugPrint(
+        '⚠️ scheduleAlarm SKIPPED: computed time is in the past. '
+        'Check timezone config. id=$id, scheduled=$scheduledDateTime',
+      );
+      return;
+    }
 
     try {
       await _notificationsPlugin.zonedSchedule(
@@ -184,9 +197,11 @@ class NotificationService {
         matchDateTimeComponents: matchDateTimeComponents,
         payload: jsonEncode(payloadMap),
       );
+      debugPrint('✅ Alarm scheduled successfully: id=$id at ${tzDateTime.toIso8601String()}');
     } catch (e) {
-      debugPrint('Failed to schedule exact alarm (Permission revoked?): $e');
-      // Fallback to inexact alarm if exact alarms are heavily restricted by OS
+      debugPrint('❌ Failed to schedule exact alarm: $e');
+      // Fallback: نُحاول مرة أخيرة بـ inexact ولكن نُسجّل التحذير
+      debugPrint('⚠️ Falling back to inexact alarm for id=$id — alarm may not ring precisely.');
       await _notificationsPlugin.zonedSchedule(
         id,
         notifTitle,

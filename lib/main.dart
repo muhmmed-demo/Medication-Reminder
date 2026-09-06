@@ -21,8 +21,16 @@ void main() async {
   try {
     final timezoneInfo = await FlutterTimezone.getLocalTimezone();
     tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
+    debugPrint('✅ Timezone set to: ${timezoneInfo.identifier}');
   } catch (e) {
-    debugPrint('Could not configure local timezone: $e');
+    // BUGFIX: إذا فشل اكتشاف الـ timezone، نضبطه على Asia/Riyadh يدوياً
+    // بدلاً من البقاء على UTC الذي يُسبب فارق 3 ساعات عن التوقيت المحلي
+    debugPrint('⚠️ Could not auto-detect timezone ($e). Falling back to Asia/Riyadh.');
+    try {
+      tz.setLocalLocation(tz.getLocation('Asia/Riyadh'));
+    } catch (_) {
+      debugPrint('❌ Failed to set fallback timezone. Alarm times may be inaccurate.');
+    }
   }
 
   // 2. Initialize Dependency Injection Container
