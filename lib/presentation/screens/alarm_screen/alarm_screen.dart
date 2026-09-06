@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -15,18 +16,41 @@ class AlarmScreen extends StatefulWidget {
   State<AlarmScreen> createState() => _AlarmScreenState();
 }
 
-class _AlarmScreenState extends State<AlarmScreen> {
+class _AlarmScreenState extends State<AlarmScreen>
+    with TickerProviderStateMixin {
   // BUGFIX: flag لضمان إرسال StartAlarmEvent مرة واحدة فقط
-  // السلوك السابق: addPostFrameCallback داخل builder كان يُرسل الحدث
-  // عند كل إعادة بناء → race condition → تجمد الشاشة
   bool _alarmStarted = false;
+
+  // Pulse Animation للزر الرئيسي
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  // ساعة حية تُحدَّث كل ثانية
+  late Timer _clockTimer;
+  String _currentTime = '';
+  String _currentDate = '';
 
   @override
   void initState() {
     super.initState();
-    // نُؤجل الإرسال لما بعد اكتمال بناء الـ Widget
+
+    // إعداد التحريك النبضي
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.06).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    // تهيئة الساعة الحية
+    _updateClock();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) => _updateClock());
+
+    // تشغيل حدث المنبه بعد اكتمال البناء
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return; // BUGFIX: تحقق من أن الـ Widget لا يزال حياً
+      if (!mounted) return;
       if (_alarmStarted) return;
       _alarmStarted = true;
 
@@ -59,6 +83,33 @@ class _AlarmScreenState extends State<AlarmScreen> {
     });
   }
 
+  void _updateClock() {
+    final now = DateTime.now();
+    final hour = now.hour > 12 ? now.hour - 12 : (now.hour == 0 ? 12 : now.hour);
+    final period = now.hour < 12 ? 'صباحاً' : 'مساءً';
+    final minute = now.minute.toString().padLeft(2, '0');
+
+    final weekdays = ['', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
+    final months = [
+      '', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+
+    if (mounted) {
+      setState(() {
+        _currentTime = '$hour:$minute $period';
+        _currentDate = '${weekdays[now.weekday]} ${now.day} ${months[now.month]}';
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _clockTimer.cancel();
+    super.dispose();
+  }
+
   void _closeScreen(BuildContext context) {
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -70,9 +121,9 @@ class _AlarmScreenState extends State<AlarmScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false, // Prevent dismissing by back button without explicit user action
+      canPop: false,
       child: Scaffold(
-        backgroundColor: const Color(0xFF0F172A), // Full-screen dark slate focus background
+        backgroundColor: const Color(0xFF0F172A),
         body: BlocConsumer<AlarmBloc, AlarmState>(
           listener: (context, state) {
             if (state is AlarmTakenSuccess) {
@@ -105,8 +156,6 @@ class _AlarmScreenState extends State<AlarmScreen> {
           },
           builder: (context, state) {
             if (state is AlarmInitial) {
-              // BUGFIX: شاشة تحميل بخلفية ملونة بدلاً من شفافة/رمادية
-              // السلوك السابق: CircularProgressIndicator على خلفية شفافة = شاشة رمادية
               return const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -117,7 +166,7 @@ class _AlarmScreenState extends State<AlarmScreen> {
                     SizedBox(height: 16),
                     Text(
                       'جاري تحميل التنبيه...',
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                      style: TextStyle(color: Colors.white70, fontSize: 18),
                     ),
                   ],
                 ),
@@ -134,16 +183,22 @@ class _AlarmScreenState extends State<AlarmScreen> {
 
               return SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const SizedBox(height: 10),
-                        // Header Alarm Icon & Status
+                        const SizedBox(height: 6),
+
+                        // ═══ الساعة الحية الكبيرة ═══
+                        _buildLiveClock(),
+
+                        const SizedBox(height: 14),
+
+                        // أيقونة المنبه + عنوان
                         Container(
-                          padding: const EdgeInsets.all(20),
+                          padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: const Color(0xFFEF4444).withAlpha(40),
@@ -154,25 +209,25 @@ class _AlarmScreenState extends State<AlarmScreen> {
                           ),
                           child: const Icon(
                             Icons.alarm_on_rounded,
-                            size: 60,
+                            size: 56,
                             color: Color(0xFFEF4444),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         Text(
                           hasMultipleMeds
                               ? '⏰ حان موعد أدويتك (${state.extraMedications!.length + 1} أدوية)!'
                               : '⏰ حان موعد جرعة العلاج الآن!',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                            fontSize: 24,
+                            fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 8),
 
-                        // Arabic Voice Announcement Badge (Elderly Assistance)
+                        // شارة النطق الصوتي
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
@@ -196,9 +251,9 @@ class _AlarmScreenState extends State<AlarmScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
 
-                        // Primary Medication Card
+                        // بطاقة الدواء الأساسية
                         _buildMedicationCard(
                           name: state.medicationName,
                           dosage: state.dosageDescription,
@@ -206,7 +261,7 @@ class _AlarmScreenState extends State<AlarmScreen> {
                           hasValidImage: hasValidImage,
                         ),
 
-                        // If multiple medications share this exact time, display each one!
+                        // الأدوية الإضافية في نفس الوقت
                         if (hasMultipleMeds) ...[
                           const SizedBox(height: 12),
                           for (final extra in state.extraMedications!) ...[
@@ -222,10 +277,11 @@ class _AlarmScreenState extends State<AlarmScreen> {
                           ],
                         ],
 
+                        // عداد التأجيل
                         if (state.snoozeCount > 0)
                           Container(
                             margin: const EdgeInsets.only(top: 10),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
                               color: Colors.amber.withAlpha(40),
                               borderRadius: BorderRadius.circular(12),
@@ -234,30 +290,36 @@ class _AlarmScreenState extends State<AlarmScreen> {
                               'تم التأجيل مسبقاً (${state.snoozeCount}/${state.maxSnoozeCount}) مرات',
                               style: const TextStyle(
                                 color: Colors.amberAccent,
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
 
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 22),
 
-                        // Giant Elderly-Accessible Action Buttons
-                        SizedBox(
-                          width: double.infinity,
-                          child: AlarmActionButton(
-                            label: hasMultipleMeds
-                                ? 'تم أخذ جميع الأدوية الآن ✅'
-                                : 'تم أخذ الجرعة الآن ✅',
-                            icon: Icons.check_circle_rounded,
-                            color: const Color(0xFF10B981),
-                            isPrimary: true,
-                            onPressed: () {
-                              context.read<AlarmBloc>().add(TakeMedicationEvent());
-                            },
+                        // ═══ زر "تم الأخذ" مع تحريك نبضي ═══
+                        ScaleTransition(
+                          scale: _pulseAnimation,
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: AlarmActionButton(
+                              label: hasMultipleMeds
+                                  ? 'تم أخذ جميع الأدوية الآن ✅'
+                                  : 'تم أخذ الجرعة الآن ✅',
+                              icon: Icons.check_circle_rounded,
+                              color: const Color(0xFF10B981),
+                              isPrimary: true,
+                              onPressed: () {
+                                context.read<AlarmBloc>().add(TakeMedicationEvent());
+                              },
+                            ),
                           ),
                         ),
+
                         const SizedBox(height: 12),
+
+                        // زر التأجيل
                         SizedBox(
                           width: double.infinity,
                           child: state.canSnooze
@@ -270,7 +332,7 @@ class _AlarmScreenState extends State<AlarmScreen> {
                                   },
                                 )
                               : Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                                   decoration: BoxDecoration(
                                     color: Colors.red.withAlpha(30),
                                     borderRadius: BorderRadius.circular(14),
@@ -282,14 +344,15 @@ class _AlarmScreenState extends State<AlarmScreen> {
                                     style: TextStyle(
                                       color: Colors.redAccent,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                      fontSize: 15,
                                     ),
                                   ),
                                 ),
                         ),
+
                         const SizedBox(height: 12),
 
-                        // Skip Dose Action (Safe Medical Dismissal)
+                        // زر تخطي الجرعة
                         SizedBox(
                           width: double.infinity,
                           child: TextButton.icon(
@@ -302,9 +365,7 @@ class _AlarmScreenState extends State<AlarmScreen> {
                               'تخطي هذه الجرعة (للصيام أو استشارة الطبيب) ⏭️',
                               style: TextStyle(fontSize: 14),
                             ),
-                            onPressed: () {
-                              _confirmSkipDose(context);
-                            },
+                            onPressed: () => _confirmSkipDose(context),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -318,6 +379,39 @@ class _AlarmScreenState extends State<AlarmScreen> {
             return const SizedBox.shrink();
           },
         ),
+      ),
+    );
+  }
+
+  /// ساعة حية كبيرة وواضحة في أعلى شاشة المنبه
+  Widget _buildLiveClock() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF334155), width: 1),
+      ),
+      child: Column(
+        children: [
+          Text(
+            _currentTime,
+            style: const TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFFF1F5F9),
+              letterSpacing: 2,
+            ),
+          ),
+          Text(
+            _currentDate,
+            style: const TextStyle(
+              fontSize: 15,
+              color: Color(0xFF94A3B8),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -342,7 +436,7 @@ class _AlarmScreenState extends State<AlarmScreen> {
             name,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 28,
+              fontSize: 32,   // كبير جداً لكبار السن
               fontWeight: FontWeight.bold,
               color: Color(0xFF38BDF8),
             ),
@@ -352,7 +446,7 @@ class _AlarmScreenState extends State<AlarmScreen> {
             'الجرعة المطلوبة: $dosage',
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 18,
+              fontSize: 20,   // حجم مقروء بوضوح
               fontWeight: FontWeight.w600,
               color: Color(0xFFE2E8F0),
             ),
@@ -392,22 +486,25 @@ class _AlarmScreenState extends State<AlarmScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const Text('تأكيد تخطي الجرعة', style: TextStyle(color: Colors.white)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('تأكيد تخطي الجرعة',
+            style: TextStyle(color: Colors.white, fontSize: 20)),
         content: const Text(
           'هل تريد بالتأكيد تخطي هذه الجرعة؟ سيتم تسجيلها كجرعة فائتة في السجل الطبي ولن يتم خصمها من المخزون.',
-          style: TextStyle(color: Color(0xFFCBD5E1)),
+          style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 15, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('إلغاء'),
+            child: const Text('إلغاء', style: TextStyle(fontSize: 16)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               context.read<AlarmBloc>().add(SkipMedicationEvent());
             },
-            child: const Text('تخطي الآن', style: TextStyle(color: Colors.orangeAccent)),
+            child: const Text('تخطي الآن',
+                style: TextStyle(color: Colors.orangeAccent, fontSize: 16)),
           ),
         ],
       ),

@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../widgets/medication_card.dart';
+import '../../widgets/permission_status_card.dart';
 import 'bloc/medications_bloc.dart';
 import 'bloc/medications_event.dart';
 import 'bloc/medications_state.dart';
 
 import '../../../core/di/injection_container.dart';
-import '../../../services/permission_service.dart';
+import '../../../core/router/app_router.dart';
 import '../../../services/notification_service.dart';
+import '../../../services/permission_service.dart';
 
 class MedicationsScreen extends StatefulWidget {
   const MedicationsScreen({super.key});
@@ -19,46 +19,25 @@ class MedicationsScreen extends StatefulWidget {
 }
 
 class _MedicationsScreenState extends State<MedicationsScreen> {
-  bool _showOemWarning = false;
-  String _deviceManufacturer = '';
-
   @override
   void initState() {
     super.initState();
     context.read<MedicationsBloc>().add(LoadMedicationsEvent());
 
-    // Request permissions and check for aggressive OEM battery killer devices
+    // طلب أذونات الإشعارات عبر شاشة الإعداد الجديدة إذا لم تكن مُفعَّلة
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await sl<NotificationService>().requestPermissions();
-      await sl<PermissionService>().requestAllAlarmPermissions();
-      await _checkOemDevice();
+      await _checkAndPromptPermissions();
     });
   }
 
-  Future<void> _checkOemDevice() async {
-    try {
-      final deviceInfo = DeviceInfoPlugin();
-      final androidInfo = await deviceInfo.androidInfo;
-      final m = androidInfo.manufacturer.toLowerCase();
-      _deviceManufacturer = androidInfo.manufacturer;
-
-      if (m.contains('xiaomi') ||
-          m.contains('redmi') ||
-          m.contains('poco') ||
-          m.contains('huawei') ||
-          m.contains('honor') ||
-          m.contains('oppo') ||
-          m.contains('vivo') ||
-          m.contains('samsung') ||
-          m.contains('realme')) {
-        final isIgnored = await sl<PermissionService>().isBatteryOptimizationIgnored();
-        if (!isIgnored && mounted) {
-          setState(() {
-            _showOemWarning = true;
-          });
-        }
-      }
-    } catch (_) {}
+  Future<void> _checkAndPromptPermissions() async {
+    if (!mounted) return;
+    // نتحقق أولاً — نفتح شاشة الإعداد فقط إذا كانت الأذونات الحرجة ناقصة
+    final permService = sl<PermissionService>();
+    final status = await permService.checkAllPermissionsStatus();
+    if (!status.criticalGranted && mounted) {
+      await Navigator.pushNamed(context, AppRouter.notificationSetup);
+    }
   }
 
   @override
@@ -89,16 +68,14 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
           ],
         ),
         actions: [
+          // زر إعداد الإشعارات في الـ AppBar
           IconButton(
             icon: const Icon(Icons.notifications_active_outlined),
-            tooltip: 'تجربة الإشعار',
+            tooltip: 'إعداد التنبيهات',
             onPressed: () async {
-              await sl<NotificationService>().showTestNotification();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم إرسال إشعار تجريبي 🔔')),
-                );
-              }
+              await Navigator.pushNamed(context, AppRouter.notificationSetup);
+              // إعادة تحميل حالة البطاقة بعد العودة
+              setState(() {});
             },
           ),
           IconButton(
@@ -122,61 +99,17 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
       ),
       body: Column(
         children: [
-          // OEM Battery Optimization Alert Banner (Xiaomi, Samsung, Huawei, etc.)
-          if (_showOemWarning)
-            Container(
-              margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.amber.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.amber.shade400),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.battery_alert_rounded, color: Colors.orange, size: 28),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'تنبيه مهم لجهازك ($_deviceManufacturer)',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'لضمان استيقاظ المنبه على شاشة القفل دون أن يوقفه نظام توفير الطاقة، يرجى السماح بالتطبيق في الخلفية.',
-                          style: TextStyle(fontSize: 12, color: Colors.black87),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            backgroundColor: Colors.orange.shade700,
-                            foregroundColor: Colors.white,
-                          ),
-                          onPressed: () async {
-                            await openAppSettings();
-                          },
-                          child: const Text('فتح الإعدادات وضبط البطارية ⚙️',
-                              style: TextStyle(fontSize: 12)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20, color: Colors.grey),
-                    onPressed: () => setState(() => _showOemWarning = false),
-                  ),
-                ],
-              ),
-            ),
+          // ═══ بطاقة حالة الأذونات الذكية ═══
+          // تظهر فقط إذا كانت الأذونات الحرجة غير مُفعَّلة
+          PermissionStatusCard(
+            onFixPressed: () async {
+              await Navigator.pushNamed(context, AppRouter.notificationSetup);
+              setState(() {});
+            },
+          ),
+
+          // ═══ زر اختبار المنبه الكبير ═══
+          _buildTestAlarmBanner(context),
 
           Expanded(
             child: BlocBuilder<MedicationsBloc, MedicationsState>(
@@ -254,6 +187,8 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
                           showDialog(
                             context: context,
                             builder: (ctx) => AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20)),
                               title: const Text('تأكيد الحذف'),
                               content: Text('هل تريد بالتأكيد حذف دواء "${med.name}"؟'),
                               actions: [
@@ -270,7 +205,8 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
                                           .add(DeleteMedicationEvent(med.id!));
                                     }
                                   },
-                                  child: const Text('حذف', style: TextStyle(color: Colors.red)),
+                                  child: const Text('حذف',
+                                      style: TextStyle(color: Colors.red)),
                                 ),
                               ],
                             ),
@@ -286,6 +222,71 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// زر اختبار المنبه — واضح وكبير لكبار السن
+  Widget _buildTestAlarmBanner(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () async {
+            await sl<NotificationService>().showTestNotification();
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('🔔 تم إرسال إشعار تجريبي — تأكد من وصول التنبيه!'),
+                  backgroundColor: Color(0xFF2563EB),
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1D4ED8), Color(0xFF2563EB)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.volume_up_rounded, color: Colors.white, size: 26),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'اختبر المنبه الآن 🔔',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        'اضغط للتأكد من أن التنبيهات تصلك',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 18),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

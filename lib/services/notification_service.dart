@@ -85,12 +85,23 @@ class NotificationService {
       audioAttributesUsage: AudioAttributesUsage.alarm,
     );
 
+    // قناة ثالثة للتذكيرات غير الحرجة (منخفضة الأولوية)
+    const AndroidNotificationChannel reminderChannel = AndroidNotificationChannel(
+      NotificationConstants.reminderChannelId,
+      NotificationConstants.reminderChannelName,
+      description: NotificationConstants.reminderChannelDescription,
+      importance: Importance.defaultImportance,
+      playSound: true,
+      enableVibration: false,
+    );
+
     final androidImplementation = _notificationsPlugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
     if (androidImplementation != null) {
       await androidImplementation.createNotificationChannel(alarmChannel);
       await androidImplementation.createNotificationChannel(systemChannel);
+      await androidImplementation.createNotificationChannel(reminderChannel);
     }
   }
 
@@ -158,9 +169,16 @@ class NotificationService {
       'extraMedications': extraMedications,
     };
 
+    final hour12 = scheduledDateTime.hour > 12
+        ? scheduledDateTime.hour - 12
+        : (scheduledDateTime.hour == 0 ? 12 : scheduledDateTime.hour);
+    final period = scheduledDateTime.hour < 12 ? 'صباحاً' : 'مساءً';
+    final minute2 = scheduledDateTime.minute.toString().padLeft(2, '0');
+    final timeStr = '$hour12:$minute2 $period';
+
     final notifTitle = extraMedications != null && extraMedications.isNotEmpty
-        ? '⏰ حان موعد أدويتك (${extraMedications.length + 1} أدوية)'
-        : '⏰ حان موعد علاجك!';
+        ? '⏰ $timeStr — حان موعد أدويتك (${extraMedications.length + 1} أدوية)'
+        : '⏰ $timeStr — حان موعد علاجك!';
     final notifBody = extraMedications != null && extraMedications.isNotEmpty
         ? '$medicationName + ${extraMedications.map((m) => m['medicationName']).join(' + ')}'
         : '$medicationName - $dosageDescription';
