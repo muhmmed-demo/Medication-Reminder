@@ -35,8 +35,9 @@ dependencies:
   vibration: ^3.1.2
   flutter_tts: ^4.2.2
 
-  # Camera & Images (Pill Identification)
+  # Camera & Images & Audio Recording
   image_picker: ^1.1.2
+  record: ^5.0.5
 
   # Date, Time & Timezones
   intl: ^0.20.3

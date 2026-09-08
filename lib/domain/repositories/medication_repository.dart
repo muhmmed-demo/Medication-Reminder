@@ -7,6 +7,7 @@ abstract class MedicationRepository {
   Future<Medication?> getMedicationById(int id);
   Future<int> insertMedication(Medication medication, List<DoseSchedule> schedules);
   Future<bool> updateMedication(Medication medication);
+  Future<void> updateMedicationWithSchedules(Medication medication, List<DoseSchedule> newSchedules);
   Future<int> deleteMedication(int id);
   
   Future<int> insertSchedule(DoseSchedule schedule);

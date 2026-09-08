@@ -37,20 +37,15 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
     on<SkipMedicationEvent>(_onSkipMedication);
   }
 
+  bool _isRinging = false;
+
   Future<void> _onStartAlarm(
     StartAlarmEvent event,
     Emitter<AlarmState> emit,
   ) async {
     final canSnooze = event.snoozeCount < AppConstants.maxSnoozeCount;
 
-    // 1. Start audio at ducked level (15% volume) + vibration
-    await alarmAudioService.startAlarmSound(
-      useCustomSound: event.useCustomSound,
-      initialVolume: 0.15,
-    );
-    await vibrationService.startAlarmVibration();
-
-    // 2. Speak medication name(s) in Arabic clearly for the elderly
+    // Speak medication name(s) in Arabic clearly for the elderly
     String speechText;
     if (event.extraMedications != null && event.extraMedications!.isNotEmpty) {
       final names = [
@@ -63,16 +58,8 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
           'تنبيه. حان موعد أخذ دواء ${event.medicationName}. الجرعة المطلوبة: ${event.dosageDescription}.';
     }
 
-    // Speak asynchronously with an 8-second safety timeout, guaranteeing volume restoration
-    ttsService
-        .speak(speechText)
-        .timeout(
-          const Duration(seconds: 8),
-          onTimeout: () {},
-        )
-        .whenComplete(() async {
-          await alarmAudioService.unduckVolume();
-        });
+    _isRinging = true;
+    _runAlarmLoop(speechText, event.useCustomSound, event.customSoundPath);
 
     emit(AlarmRinging(
       medicationId: event.medicationId,
@@ -84,8 +71,48 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
       maxSnoozeCount: AppConstants.maxSnoozeCount,
       canSnooze: canSnooze,
       imagePath: event.imagePath,
+      customSoundPath: event.customSoundPath,
       extraMedications: event.extraMedications,
     ));
+  }
+
+  Future<void> _runAlarmLoop(String speechText, bool useCustomSound, String? customSoundPath) async {
+    // Start vibration continuously
+    await vibrationService.startAlarmVibration();
+
+    while (_isRinging) {
+      // 1. Speak the text (or skip if custom voice is used and preferred)
+      // We'll speak it anyway as requested: "ينطق اسم الدواء ثم التنبيه"
+      await alarmAudioService.stopAlarmSound(); // Ensure alarm sound is off
+      
+      await ttsService.speak(speechText).timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {},
+      );
+
+      // Give a tiny pause
+      await Future.delayed(const Duration(seconds: 1));
+      if (!_isRinging) break;
+
+      // 2. Play Alarm (Default or Custom Voice) for 8 seconds
+      await alarmAudioService.startAlarmSound(
+        useCustomSound: useCustomSound,
+        customSoundPath: customSoundPath,
+        loop: false, // We handle loop
+        initialVolume: 1.0, // Full volume for alarm portion
+      );
+
+      // Wait 8 seconds while alarm plays
+      await Future.delayed(const Duration(seconds: 8));
+      if (!_isRinging) break;
+    }
+  }
+
+  Future<void> _stopRinging() async {
+    _isRinging = false;
+    await alarmAudioService.stopAlarmSound();
+    await vibrationService.stopVibration();
+    await ttsService.stop();
   }
 
   Future<void> _onTakeMedication(
@@ -95,10 +122,7 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
     if (state is! AlarmRinging) return;
     final ringingState = state as AlarmRinging;
 
-    // Stop sound, vibration, and TTS, restoring original volume
-    await alarmAudioService.stopAlarmSound();
-    await vibrationService.stopVibration();
-    await ttsService.stop();
+    await _stopRinging();
 
     // Cancel notification
     final notifId = ringingState.doseScheduleId;
@@ -138,10 +162,7 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
     if (state is! AlarmRinging) return;
     final ringingState = state as AlarmRinging;
 
-    // Stop sound, vibration, and TTS, restoring original volume
-    await alarmAudioService.stopAlarmSound();
-    await vibrationService.stopVibration();
-    await ttsService.stop();
+    await _stopRinging();
 
     // Cancel notification
     final notifId = ringingState.doseScheduleId;
@@ -182,10 +203,7 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
 
     if (!ringingState.canSnooze) return;
 
-    // Stop sound, vibration, and TTS, restoring volume to original level
-    await alarmAudioService.stopAlarmSound();
-    await vibrationService.stopVibration();
-    await ttsService.stop();
+    await _stopRinging();
 
     // Cancel current notification to stop sound
     final notifId = ringingState.doseScheduleId;
@@ -213,6 +231,7 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
       doseScheduleId: ringingState.doseScheduleId,
       snoozeCount: nextSnoozeCount,
       imagePath: ringingState.imagePath,
+      customSoundPath: ringingState.customSoundPath,
       extraMedications: ringingState.extraMedications,
     );
 
@@ -226,9 +245,7 @@ class AlarmBloc extends Bloc<AlarmEvent, AlarmState> {
 
   @override
   Future<void> close() async {
-    await alarmAudioService.stopAlarmSound();
-    await vibrationService.stopVibration();
-    await ttsService.stop();
+    await _stopRinging();
     return super.close();
   }
 }

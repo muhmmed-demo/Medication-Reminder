@@ -90,13 +90,34 @@ class AlarmAudioService {
     await setPlayerVolume(1.0);
   }
 
-  Future<void> startAlarmSound({bool useCustomSound = true, double initialVolume = 1.0}) async {
+  Future<void> startAlarmSound({
+    bool useCustomSound = true,
+    double initialVolume = 1.0,
+    String? customSoundPath,
+    bool loop = true,
+  }) async {
     if (_isPlaying) return;
 
     try {
       await maximizeVolume();
 
+      await _player.setReleaseMode(loop ? ReleaseMode.loop : ReleaseMode.stop);
       await _player.setVolume(initialVolume);
+      
+      if (customSoundPath != null && customSoundPath.isNotEmpty) {
+        // Try playing custom recorded voice
+        try {
+          await _player.play(
+            DeviceFileSource(customSoundPath),
+            mode: PlayerMode.mediaPlayer,
+          );
+          _isPlaying = true;
+          return;
+        } catch (e) {
+          debugPrint('Error playing custom sound, falling back to asset: $e');
+        }
+      }
+
       await _player.play(
         AssetSource(AppConstants.customAlarmSoundAsset.replaceFirst('assets/', '')),
         mode: PlayerMode.mediaPlayer,

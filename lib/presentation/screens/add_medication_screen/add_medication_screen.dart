@@ -7,12 +7,20 @@ import 'package:path/path.dart' as p;
 import '../../../../domain/entities/medication.dart';
 import '../../../../domain/entities/dose_schedule.dart';
 import '../../../../domain/enums/repeat_type.dart';
+import '../../widgets/voice_recorder_widget.dart';
 import 'bloc/add_medication_bloc.dart';
 import 'bloc/add_medication_event.dart';
 import 'bloc/add_medication_state.dart';
 
 class AddMedicationScreen extends StatefulWidget {
-  const AddMedicationScreen({super.key});
+  final Medication? initialMedication;
+  final List<DoseSchedule>? initialSchedules;
+
+  const AddMedicationScreen({
+    super.key,
+    this.initialMedication,
+    this.initialSchedules,
+  });
 
   @override
   State<AddMedicationScreen> createState() => _AddMedicationScreenState();
@@ -20,25 +28,62 @@ class AddMedicationScreen extends StatefulWidget {
 
 class _AddMedicationScreenState extends State<AddMedicationScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _dosageController = TextEditingController(text: 'قرص واحد');
-  final _notesController = TextEditingController();
-  final _inventoryController = TextEditingController();
+  late final TextEditingController _nameController;
+  late final TextEditingController _dosageController;
+  late final TextEditingController _notesController;
+  late final TextEditingController _inventoryController;
 
-  int _timesPerDay = 1;
-  bool _isContinuous = true;
+  late int _timesPerDay;
+  late bool _isContinuous;
   DateTime? _endDate;
-  List<TimeOfDay> _scheduleTimes = [const TimeOfDay(hour: 8, minute: 0)];
+  late List<TimeOfDay> _scheduleTimes;
   
-  // Phase 1 advanced options
-  bool _trackInventory = false;
-  bool _isPRN = false;
-  String _mealTiming = 'none'; // 'none', 'before', 'after', 'with'
-  RepeatType _repeatType = RepeatType.daily;
-  final List<int> _selectedDays = [1, 2, 3, 4, 5, 6, 7];
+  late bool _trackInventory;
+  late bool _isPRN;
+  late String _mealTiming; 
+  late RepeatType _repeatType;
+  late List<int> _selectedDays;
 
-  // Phase 2: Pill / Box image for elderly visual identification
   String? _imagePath;
+  String? _customSoundPath;
+
+  bool get isEditMode => widget.initialMedication != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final med = widget.initialMedication;
+    final scheds = widget.initialSchedules ?? [];
+
+    _nameController = TextEditingController(text: med?.name ?? '');
+    _dosageController = TextEditingController(text: med?.dosageDescription ?? 'قرص واحد');
+    _notesController = TextEditingController(text: med?.notes ?? '');
+    _inventoryController = TextEditingController(text: med?.inventoryCount?.toString() ?? '');
+
+    _isPRN = med?.isPRN ?? false;
+    _timesPerDay = med?.timesPerDay ?? 1;
+    _isContinuous = med != null ? med.isContinuous : true;
+    _endDate = med?.endDate;
+    
+    _trackInventory = med?.inventoryCount != null;
+    _mealTiming = med?.mealTiming ?? 'none';
+    _repeatType = scheds.isNotEmpty ? scheds.first.repeatType : RepeatType.daily;
+    
+    if (scheds.isNotEmpty && scheds.first.repeatDays != null) {
+      _selectedDays = List.from(scheds.first.repeatDays!);
+    } else {
+      _selectedDays = [1, 2, 3, 4, 5, 6, 7];
+    }
+
+    if (scheds.isNotEmpty && !_isPRN) {
+      _scheduleTimes = scheds.map((s) => TimeOfDay(hour: s.hour, minute: s.minute)).toList();
+    } else {
+      _scheduleTimes = _generateDefaultTimes(_timesPerDay);
+    }
+
+    _imagePath = med?.imagePath;
+    _customSoundPath = med?.customSoundPath;
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -147,24 +192,26 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
       final inventory = _trackInventory ? int.tryParse(_inventoryController.text.trim()) : null;
 
       final med = Medication(
+        id: widget.initialMedication?.id,
         name: _nameController.text.trim(),
         dosageDescription: _dosageController.text.trim(),
         timesPerDay: _isPRN ? 0 : _timesPerDay,
-        startDate: now,
+        startDate: widget.initialMedication?.startDate ?? now,
         endDate: (_isPRN || _isContinuous) ? null : _endDate,
         notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-        createdAt: now,
+        createdAt: widget.initialMedication?.createdAt ?? now,
         inventoryCount: inventory,
         refillThreshold: inventory != null ? 3 : null,
         mealTiming: _mealTiming == 'none' ? null : _mealTiming,
         imagePath: _imagePath,
+        customSoundPath: _customSoundPath,
         isPRN: _isPRN,
       );
 
       final schedules = _isPRN
           ? [
               DoseSchedule(
-                medicationId: 0,
+                medicationId: med.id ?? 0,
                 scheduledTime: 'عند اللزوم',
                 repeatType: RepeatType.daily,
                 isActive: false,
@@ -172,7 +219,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
             ]
           : _scheduleTimes.map((t) {
               return DoseSchedule(
-                medicationId: 0, // Assigned by repository
+                medicationId: med.id ?? 0, 
                 scheduledTime: _formatTimeOfDay(t),
                 repeatType: _repeatType,
                 repeatDays: _repeatType == RepeatType.specificDays ? List.from(_selectedDays) : null,
@@ -191,13 +238,13 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('إضافة دواء جديد'),
+        title: Text(isEditMode ? 'تعديل الدواء' : 'إضافة دواء جديد'),
       ),
       body: BlocListener<AddMedicationBloc, AddMedicationState>(
         listener: (context, state) {
           if (state is AddMedicationSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('تمت جدولة الدواء والمنبهات بنجاح ✅')),
+              SnackBar(content: Text(isEditMode ? 'تم تحديث الدواء بنجاح ✅' : 'تمت جدولة الدواء والمنبهات بنجاح ✅')),
             );
             Navigator.pop(context, true);
           } else if (state is AddMedicationFailure) {
@@ -244,9 +291,24 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Phase 2: Medication / Box Picture for Elderly
+                // Voice Recording
                 Text(
-                  'صورة علبة الدواء أو الحبة 📸 (مخصص لكبار السن)',
+                  'تنبيه بصوت مخصص 🎙️',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                VoiceRecorderWidget(
+                  initialAudioPath: _customSoundPath,
+                  onAudioSaved: (path) => setState(() => _customSoundPath = path),
+                ),
+                const SizedBox(height: 20),
+
+                // Pill Picture
+                Text(
+                  'صورة علبة الدواء أو الحبة 📸',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: theme.colorScheme.primary,
@@ -634,7 +696,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
                       onPressed: state is AddMedicationSaving ? null : _onSave,
                       child: state is AddMedicationSaving
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('حفظ وجدولة المنبهات ⏰'),
+                          : Text(isEditMode ? 'حفظ التعديلات 💾' : 'حفظ وجدولة المنبهات ⏰'),
                     );
                   },
                 ),

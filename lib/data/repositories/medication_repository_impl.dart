@@ -53,6 +53,24 @@ class MedicationRepositoryImpl implements MedicationRepository {
   }
 
   @override
+  Future<void> updateMedicationWithSchedules(Medication medication, List<DoseSchedule> newSchedules) async {
+    // 1. Update the medication
+    await updateMedication(medication);
+    
+    if (medication.id != null) {
+      // 2. Delete existing schedules
+      await database.doseScheduleDao.deleteSchedulesForMedication(medication.id!);
+      
+      // 3. Insert new schedules
+      final companions = newSchedules.map((s) {
+        final updated = s.copyWith(medicationId: medication.id!);
+        return DoseScheduleModel.toCompanion(updated);
+      }).toList();
+      await database.doseScheduleDao.insertSchedules(companions);
+    }
+  }
+
+  @override
   Future<int> deleteMedication(int id) async {
     return await database.medicationDao.deleteMedication(id);
   }

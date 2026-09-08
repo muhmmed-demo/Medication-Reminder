@@ -7,10 +7,14 @@ class AddMedicationUseCase {
 
   AddMedicationUseCase(this.repository);
 
-  Future<int> call({
+  Future<void> call({
     required Medication medication,
     required List<DoseSchedule> schedules,
   }) async {
-    return await repository.insertMedication(medication, schedules);
+    if (medication.id != null) {
+      await repository.updateMedicationWithSchedules(medication, schedules);
+    } else {
+      await repository.insertMedication(medication, schedules);
+    }
   }
 }

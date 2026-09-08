@@ -19,6 +19,7 @@ class AlarmRinging extends AlarmState {
   final int maxSnoozeCount;
   final bool canSnooze;
   final String? imagePath;
+  final String? customSoundPath;
   final List<Map<String, dynamic>>? extraMedications;
 
   const AlarmRinging({
@@ -31,6 +32,7 @@ class AlarmRinging extends AlarmState {
     required this.maxSnoozeCount,
     required this.canSnooze,
     this.imagePath,
+    this.customSoundPath,
     this.extraMedications,
   });
 
@@ -45,6 +47,7 @@ class AlarmRinging extends AlarmState {
         maxSnoozeCount,
         canSnooze,
         imagePath,
+        customSoundPath,
         extraMedications,
       ];
 }

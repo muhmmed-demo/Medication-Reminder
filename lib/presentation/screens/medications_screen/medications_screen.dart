@@ -10,6 +10,7 @@ import '../../../core/di/injection_container.dart';
 import '../../../core/router/app_router.dart';
 import '../../../services/notification_service.dart';
 import '../../../services/permission_service.dart';
+import '../add_medication_screen/add_medication_screen.dart';
 
 class MedicationsScreen extends StatefulWidget {
   const MedicationsScreen({super.key});
@@ -181,6 +182,20 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
                                 duration: const Duration(seconds: 2),
                               ),
                             );
+                          }
+                        },
+                        onEdit: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AddMedicationScreen(
+                                initialMedication: med,
+                                initialSchedules: schedules,
+                              ),
+                            ),
+                          );
+                          if (result == true && context.mounted) {
+                            context.read<MedicationsBloc>().add(LoadMedicationsEvent());
                           }
                         },
                         onDelete: () {

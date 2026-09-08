@@ -7,6 +7,7 @@ class MedicationCard extends StatelessWidget {
   final Medication medication;
   final List<DoseSchedule> schedules;
   final VoidCallback? onDelete;
+  final VoidCallback? onEdit;
   final VoidCallback? onToggleActive;
   final VoidCallback? onTakePrnDose;
 
@@ -15,6 +16,7 @@ class MedicationCard extends StatelessWidget {
     required this.medication,
     required this.schedules,
     this.onDelete,
+    this.onEdit,
     this.onToggleActive,
     this.onTakePrnDose,
   });
@@ -101,6 +103,12 @@ class MedicationCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (onEdit != null)
+                  IconButton(
+                    icon: const Icon(Icons.edit_rounded, color: Colors.blueAccent),
+                    tooltip: 'تعديل الدواء',
+                    onPressed: onEdit,
+                  ),
                 if (onDelete != null)
                   IconButton(
                     icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),

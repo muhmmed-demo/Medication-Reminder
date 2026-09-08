@@ -15,6 +15,7 @@ class StartAlarmEvent extends AlarmEvent {
   final DateTime scheduledDateTime;
   final int snoozeCount;
   final bool useCustomSound;
+  final String? customSoundPath;
   final String? imagePath;
   final List<Map<String, dynamic>>? extraMedications;
 
@@ -26,6 +27,7 @@ class StartAlarmEvent extends AlarmEvent {
     required this.scheduledDateTime,
     this.snoozeCount = 0,
     this.useCustomSound = true,
+    this.customSoundPath,
     this.imagePath,
     this.extraMedications,
   });
@@ -39,6 +41,7 @@ class StartAlarmEvent extends AlarmEvent {
         scheduledDateTime,
         snoozeCount,
         useCustomSound,
+        customSoundPath,
         imagePath,
         extraMedications,
       ];

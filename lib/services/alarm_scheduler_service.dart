@@ -110,6 +110,7 @@ class AlarmSchedulerService {
           medicationId: primaryMed.id ?? 0,
           doseScheduleId: primarySchedule.id ?? 0,
           imagePath: primaryMed.imagePath,
+          customSoundPath: primaryMed.customSoundPath,
           matchDateTimeComponents: matchComponents,
           extraMedications: extraMedications.isNotEmpty ? extraMedications : null,
         );

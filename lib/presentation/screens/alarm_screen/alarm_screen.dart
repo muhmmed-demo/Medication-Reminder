@@ -75,6 +75,7 @@ class _AlarmScreenState extends State<AlarmScreen>
                     DateTime.now(),
                 snoozeCount: widget.initialPayload!['snoozeCount'] as int? ?? 0,
                 useCustomSound: widget.initialPayload!['useCustomSound'] as bool? ?? true,
+                customSoundPath: widget.initialPayload!['customSoundPath'] as String?,
                 imagePath: widget.initialPayload!['imagePath'] as String?,
                 extraMedications: extraMeds,
               ),

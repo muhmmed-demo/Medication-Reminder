@@ -115,6 +115,7 @@ class NotificationService {
     int snoozeCount = 0,
     bool useCustomSound = true,
     String? imagePath,
+    String? customSoundPath,
     DateTimeComponents? matchDateTimeComponents,
     List<Map<String, dynamic>>? extraMedications,
   }) async {
@@ -166,6 +167,7 @@ class NotificationService {
       'snoozeCount': snoozeCount,
       'useCustomSound': useCustomSound,
       'imagePath': imagePath,
+      'customSoundPath': customSoundPath,
       'extraMedications': extraMedications,
     };
 
