@@ -37,7 +37,7 @@ dependencies:
 
   # Camera & Images & Audio Recording
   image_picker: ^1.1.2
-  record: ^5.0.5
+  record: ^5.2.0
 
   # Date, Time & Timezones
   intl: ^0.20.3
@@ -46,6 +46,9 @@ dependencies:
 
   # Device detection for OEM battery optimization guidance
   device_info_plus: ^11.1.3
+
+dependency_overrides:
+  record_platform_interface: 1.2.0
 
 dev_dependencies:
   flutter_test:
