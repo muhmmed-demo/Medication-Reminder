@@ -8,6 +8,7 @@ import '../../../../domain/entities/medication.dart';
 import '../../../../domain/entities/dose_schedule.dart';
 import '../../../../domain/enums/repeat_type.dart';
 import '../../widgets/voice_recorder_widget.dart';
+import '../../widgets/dose_countdown_timer.dart';
 import 'bloc/add_medication_bloc.dart';
 import 'bloc/add_medication_event.dart';
 import 'bloc/add_medication_state.dart';
@@ -494,18 +495,60 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
+                  Column(
                     children: List.generate(_scheduleTimes.length, (i) {
                       final time = _scheduleTimes[i];
-                      return ActionChip(
-                        avatar: const Icon(Icons.access_alarm_rounded, size: 18),
-                        label: Text(
-                          'الجرعة ${i + 1}: ${_formatTimeOfDay(time)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                      final formatted12 = DoseTimeHelper.formatTimeOfDayTo12Hour(time);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceVariant.withAlpha(50),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Row(
+                            children: [
+                              // زر اختيار وتعديل الساعة
+                              InkWell(
+                                onTap: () => _pickTime(i),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary.withAlpha(20),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: theme.colorScheme.primary.withAlpha(60)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.access_time_rounded, size: 18, color: theme.colorScheme.primary),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'الجرعة ${i + 1}: $formatted12',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.edit_rounded, size: 14, color: Colors.grey),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              // مؤقت كم بقي على الدواء معروض بجانب اختيار الساعة
+                              SingleDoseRemainingTimerChip(
+                                time: time,
+                                onTap: () => _pickTime(i),
+                              ),
+                            ],
+                          ),
                         ),
-                        onPressed: () => _pickTime(i),
                       );
                     }),
                   ),

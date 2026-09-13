@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../domain/entities/medication.dart';
 import '../../domain/entities/dose_schedule.dart';
+import 'dose_countdown_timer.dart';
 
 class MedicationCard extends StatelessWidget {
   final Medication medication;
@@ -264,43 +265,62 @@ class MedicationCard extends StatelessWidget {
                 ),
               ),
             ] else ...[
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Icon(Icons.access_time_rounded, size: 18, color: Colors.grey.shade600),
-                  const SizedBox(width: 6),
-                  Text(
-                    'المواعيد (${schedules.length}): ',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade700,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.access_time_rounded, size: 18, color: Colors.grey.shade600),
+                      const SizedBox(width: 6),
+                      Text(
+                        'المواعيد: ',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: schedules.map((s) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
+                  ...schedules.map((s) {
+                    final timeFormatted = DoseTimeHelper.formatTimeTo12Hour(s.scheduledTime);
+                    return InkWell(
+                      onTap: onEdit,
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isPaused
+                              ? Colors.grey.shade200
+                              : theme.colorScheme.primary.withAlpha(20),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
                             color: isPaused
-                                ? Colors.grey.shade200
-                                : theme.colorScheme.primary.withAlpha(20),
-                            borderRadius: BorderRadius.circular(6),
+                                ? Colors.grey.shade300
+                                : theme.colorScheme.primary.withAlpha(50),
+                            width: 1,
                           ),
-                          child: Text(
-                            s.scheduledTime,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isPaused
-                                  ? Colors.grey.shade600
-                                  : theme.colorScheme.primary,
-                            ),
+                        ),
+                        child: Text(
+                          timeFormatted,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: isPaused
+                                ? Colors.grey.shade600
+                                : theme.colorScheme.primary,
                           ),
-                        );
-                      }).toList(),
-                    ),
+                        ),
+                      ),
+                    );
+                  }),
+                  // مؤقت كم بقي على الدواء معروض بالعرض بجانب مواعيد الساعة
+                  DoseCountdownTimerWidget(
+                    medication: medication,
+                    schedules: schedules,
+                    onTap: onEdit,
                   ),
                 ],
               ),
